@@ -18,14 +18,12 @@ pub enum Error {
     UnrecognizedToken(Span),
     #[error("Invalid token '{0}'")]
     InvalidToken(String, Span),
-    #[error("Unknown UR type '{0}'")]
-    UnknownUrType(String, Span),
     #[error("Expected comma")]
     ExpectedComma(Span),
     #[error("Unmatched parentheses")]
     UnmatchedParentheses(Span),
-    #[error("Expected colon after map key")]
-    ExpectedColonAfterMapKey(Span),
+    #[error("Expected colon")]
+    ExpectedColon(Span),
     #[error("Expected map key")]
     ExpectedMapKey(Span),
     #[error("Unmatched braces")]
@@ -36,12 +34,10 @@ pub enum Error {
     InvalidHexString(Span),
     #[error("Invalid base64 string")]
     InvalidBase64String(Span),
-    #[error("Invalid number '{0}'")]
-    InvalidNumber(String, Span),
     #[error("Invalid tag number '{0}'")]
     InvalidTagNumber(String, Span),
-    #[error("Invalid tag name '{0}'")]
-    InvalidTagName(String, Span),
+    #[error("Unknown UR type '{0}'")]
+    UnknownUrType(String, Span),
     #[error("Invalid UR '{0}'")]
     InvalidUr(String, Span),
 }
@@ -92,15 +88,13 @@ impl Error {
             Error::UnknownUrType(_, range) => Self::format_message(self, source, range),
             Error::UnmatchedParentheses(range) => Self::format_message(self, source, range),
             Error::ExpectedComma(range) => Self::format_message(self, source, range),
-            Error::ExpectedColonAfterMapKey(range) => Self::format_message(self, source, range),
+            Error::ExpectedColon(range) => Self::format_message(self, source, range),
             Error::ExpectedMapKey(range) => Self::format_message(self, source, range),
             Error::UnmatchedBraces(range) => Self::format_message(self, source, range),
             Error::UnknownTagName(_, range) => Self::format_message(self, source, range),
             Error::InvalidHexString(range) => Self::format_message(self, source, range),
             Error::InvalidBase64String(range) => Self::format_message(self, source, range),
-            Error::InvalidNumber(_, range) => Self::format_message(self, source, range),
             Error::InvalidTagNumber(_, range) => Self::format_message(self, source, range),
-            Error::InvalidTagName(_, range) => Self::format_message(self, source, range),
             Error::InvalidUr(_, range) => Self::format_message(self, source, range),
         }
     }
@@ -186,19 +180,33 @@ fn expect_token(lexer: &mut Lexer<'_, Token>) -> Result<Token> {
 }
 
 fn parse_item_token(token: &Token, lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
+    // Handle embedded lexing errors in token payloads
+    if let Token::ByteStringHex(Err(e)) = token {
+        return Err(e.clone());
+    }
+    if let Token::ByteStringBase64(Err(e)) = token {
+        return Err(e.clone());
+    }
+    if let Token::TagNumber(Err(e)) = token {
+        return Err(e.clone());
+    }
+    if let Token::UR(Err(e)) = token {
+        return Err(e.clone());
+    }
+
     match token {
         Token::Bool(b) => Ok((*b).into()),
         Token::Null => Ok(CBOR::null()),
         Token::ByteStringHex(Ok(bytes)) => Ok(CBOR::to_byte_string(bytes)),
         Token::ByteStringBase64(Ok(bytes)) => Ok(CBOR::to_byte_string(bytes)),
-        Token::Number(Ok(num)) => Ok((*num).into()),
+        Token::Number(num) => Ok((*num).into()),
         Token::NaN => Ok(f64::NAN.into()),
         Token::Infinity => Ok(f64::INFINITY.into()),
         Token::NegInfinity => Ok(f64::NEG_INFINITY.into()),
         Token::String(s) => parse_string(s, lexer.span()),
         Token::UR(Ok(ur)) => parse_ur(ur, lexer.span()),
         Token::TagNumber(Ok(tag_value)) => parse_number_tag(*tag_value, lexer),
-        Token::TagName(Ok(name)) => parse_name_tag(name, lexer),
+        Token::TagName(name) => parse_name_tag(&name, lexer),
         Token::BracketOpen => parse_array(lexer),
         Token::BraceOpen => parse_map(lexer),
         _ => Err(Error::UnexpectedToken(Box::new(token.clone()), lexer.span())),
@@ -247,13 +255,14 @@ fn parse_number_tag(tag_value: TagValue, lexer: &mut Lexer<'_, Token>) -> Result
 }
 
 fn parse_name_tag(name: &str, lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
+    let span = (lexer.span().start)..(lexer.span().end - 1);
     let item = parse_item(lexer)?;
     match expect_token(lexer)? {
         Token::ParenthesisClose => {
             if let Some(tag) = tag_for_name(name) {
                 Ok(CBOR::to_tagged_value(tag, item))
             } else {
-                Err(Error::UnknownTagName(name.to_string(), lexer.span()))
+                Err(Error::UnknownTagName(name.to_string(), span))
             }
         }
         _ => { Err(Error::UnmatchedParentheses(lexer.span())) }
@@ -283,7 +292,7 @@ fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                 items.push(CBOR::to_byte_string(bytes));
                 awaits_item = false;
             }
-            Token::Number(Ok(num)) if !awaits_comma => {
+            Token::Number(num) if !awaits_comma => {
                 items.push(num.into());
                 awaits_item = false;
             }
@@ -311,7 +320,7 @@ fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                 items.push(parse_number_tag(tag_value, lexer)?);
                 awaits_item = false;
             }
-            Token::TagName(Ok(name)) if !awaits_comma => {
+            Token::TagName(name) if !awaits_comma => {
                 items.push(parse_name_tag(&name, lexer)?);
                 awaits_item = false;
             }
@@ -330,6 +339,9 @@ fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                 return Ok(items.into());
             }
             token => {
+                if awaits_comma {
+                    return Err(Error::ExpectedComma(lexer.span()));
+                }
                 return Err(Error::UnexpectedToken(Box::new(token), lexer.span()));
             }
         }
@@ -360,6 +372,9 @@ fn parse_map(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                 awaits_key = true;
             }
             _ => {
+                if awaits_comma {
+                    return Err(Error::ExpectedComma(lexer.span()));
+                }
                 let key = parse_item_token(&token, lexer)?;
                 if let Some(Token::Colon) = expect_token(lexer).ok() {
                     let value = match parse_item(lexer) {
@@ -371,7 +386,7 @@ fn parse_map(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                     map.insert(key, value);
                     awaits_key = false;
                 } else {
-                    return Err(Error::ExpectedColonAfterMapKey(lexer.span()));
+                    return Err(Error::ExpectedColon(lexer.span()));
                 }
             }
         }
@@ -425,9 +440,13 @@ pub enum Token {
     NegInfinity,
 
     /// Binary string in hex format.
-    #[regex(r"h'[0-9a-fA-F]{2,}'", |lex| {
+    #[regex(r"h'[0-9a-fA-F]*'", |lex| {
         let hex = lex.slice();
-        hex::decode(hex[2..hex.len() - 1].as_bytes())
+        let raw_hex = hex[2..hex.len() - 1].as_bytes();
+        if raw_hex.len() % 2 != 0 {
+            return Err(Error::InvalidHexString(lex.span()));
+        }
+        hex::decode(raw_hex)
             .map_err(|_|
                 Error::InvalidHexString(lex.span())
             )
@@ -446,13 +465,9 @@ pub enum Token {
 
     /// JavaScript-style number.
     #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex|
-        lex.slice()
-            .parse::<f64>()
-            .map_err(|_|
-                Error::InvalidNumber(lex.slice().to_string(), lex.span())
-            )
+        lex.slice().parse::<f64>().unwrap()
     )]
-    Number(Result<f64>),
+    Number(f64),
 
     /// JavaScript-style string.
     #[regex(r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#, |lex|
@@ -462,27 +477,20 @@ pub enum Token {
 
     /// Integer followed immediately by an opening parenthesis.
     #[regex(r#"[1-9][0-9]*\("#, |lex|
-        lex.slice()
-            .strip_suffix('(')
-            .ok_or_else(||
-                Error::InvalidTagNumber(lex.slice().to_string(), lex.span())
+        let span = (lex.span().start)..(lex.span().end - 1);
+        let stripped = lex.slice().strip_suffix('(').unwrap();
+        stripped.parse::<TagValue>().map_err(|_|
+                Error::InvalidTagNumber(stripped.to_string(), span)
             )
-            .and_then(|s| s.parse::<TagValue>().map_err(|_|
-                Error::InvalidTagNumber(s.to_string(), lex.span())
-            ))
     )]
     TagNumber(Result<TagValue>),
 
     /// Tag name followed immediately by an opening parenthesis.
     #[regex(r#"[a-zA-Z_][a-zA-Z0-9_-]*\("#, |lex|
-        lex.slice()
-            .strip_suffix('(')
-            .ok_or_else(||
-                Error::InvalidTagName(lex.slice().to_string(), lex.span())
-            )
-            .map(|s| s.to_string())
+        // safe to drop the trailing '('
+        lex.slice()[..lex.slice().len()-1].to_string()
     )]
-    TagName(Result<String>),
+    TagName(String),
 
     #[regex(r#"ur:([a-zA-Z0-9][a-zA-Z0-9-]*)/([a-zA-Z]{8,})"#, |lex|
         let s = lex.slice();

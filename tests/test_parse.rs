@@ -148,63 +148,28 @@ fn test_named_tag() {
 fn test_errors() {
     dcbor::register_tags();
 
-    let source = "";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert_eq!(result, Err(ParseError::EmptyInput));
+    fn check_error<F>(source: &str, expected: F) where F: Fn(&ParseError) -> bool {
+        let result = parse_dcbor_item(source);
+        let err = result.unwrap_err();
+        println!("{}", err.full_message(source));
+        assert!(expected(&err), "Unexpected error for source `{}`: {:?}", source, err);
+    }
 
-    let source = "q";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::UnrecognizedToken(_))));
-
-    let source = "[1, 2";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::UnexpectedEndOfInput)));
-
-    let source = "[1, 2,\n3, 4,";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::UnexpectedEndOfInput)));
-
-    let source = "1 1";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::ExtraData(_))));
-
-    let source = "ur:foobar/cyisdadmlasgtapttl";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::UnknownUrType(_, _))));
-
-    let source = "1([1, 2, 3]";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::UnmatchedParentheses(_))));
-
-    let source = "{1: 2, 3}";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::ExpectedColonAfterMapKey(_))));
-
-    let source = "{1: 2, 3:}";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::ExpectedMapKey(_))));
-
-    let source = "{1: 2, 3: 4";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::UnmatchedBraces(_))));
-
-    // let source = "{1: 2 3: 4}";
-    // let result = parse_dcbor_item(source);
-    // println!("{}", result.clone().unwrap_err().full_message(source));
-    // assert!(matches!(result, Err(ParseError::UnmatchedBraces(_))));
-
-    let source = "[1 2 3]";
-    let result = parse_dcbor_item(source);
-    println!("{}", result.clone().unwrap_err().full_message(source));
-    assert!(matches!(result, Err(ParseError::ExpectedComma(_))));
+    check_error("", |e| matches!(e, ParseError::EmptyInput));
+    check_error("q", |e| matches!(e, ParseError::UnrecognizedToken(_)));
+    check_error("1 1", |e| matches!(e, ParseError::ExtraData(_)));
+    check_error("[1, 2", |e| matches!(e, ParseError::UnexpectedEndOfInput));
+    check_error("[1, 2,\n3, 4,", |e| matches!(e, ParseError::UnexpectedEndOfInput));
+    check_error("[1 2 3]", |e| matches!(e, ParseError::ExpectedComma(_)));
+    check_error("1([1, 2, 3]", |e| matches!(e, ParseError::UnmatchedParentheses(_)));
+    check_error("{1: 2, 3}", |e| matches!(e, ParseError::ExpectedColon(_)));
+    check_error("{1: 2, 3:}", |e| matches!(e, ParseError::ExpectedMapKey(_)));
+    check_error("{1: 2, 3: 4", |e| matches!(e, ParseError::UnmatchedBraces(_)));
+    check_error("{1: 2 3: 4}", |e| matches!(e, ParseError::ExpectedComma(_)));
+    check_error("h'01020'", |e| matches!(e, ParseError::InvalidHexString(_)));
+    check_error("b64'AQIDBAUGBwgJCg'", |e| matches!(e, ParseError::InvalidBase64String(_)));
+    check_error("20000000000000000000(1)", |e| matches!(e, ParseError::InvalidTagNumber(_, _)));
+    check_error("foobar(1)", |e| matches!(e, ParseError::UnknownTagName(_, _)));
+    check_error("ur:foobar/cyisdadmlasgtapttl", |e| matches!(e, ParseError::UnknownUrType(_, _)));
+    check_error("ur:date/cyisdadmlasgtapttx", |e| matches!(e, ParseError::InvalidUr(_, _)));
 }
