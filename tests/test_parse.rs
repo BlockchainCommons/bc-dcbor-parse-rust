@@ -197,4 +197,14 @@ fn test_errors() {
     let result = parse_dcbor_item(source);
     println!("{}", result.clone().unwrap_err().full_message(source));
     assert!(matches!(result, Err(ParseError::UnmatchedBraces(_))));
+
+    // let source = "{1: 2 3: 4}";
+    // let result = parse_dcbor_item(source);
+    // println!("{}", result.clone().unwrap_err().full_message(source));
+    // assert!(matches!(result, Err(ParseError::UnmatchedBraces(_))));
+
+    let source = "[1 2 3]";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::ExpectedComma(_))));
 }

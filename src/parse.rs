@@ -20,6 +20,8 @@ pub enum Error {
     InvalidToken(String, Span),
     #[error("Unknown UR type '{0}'")]
     UnknownUrType(String, Span),
+    #[error("Expected comma")]
+    ExpectedComma(Span),
     #[error("Unmatched parentheses")]
     UnmatchedParentheses(Span),
     #[error("Expected colon after map key")]
@@ -66,11 +68,14 @@ impl Error {
             }
         }
         // Grab the exact line text (or empty if out of bounds)
-        let line = source.lines().nth(line_number - 1).unwrap_or("");
+        let line = source
+            .lines()
+            .nth(line_number - 1)
+            .unwrap_or("");
         // Column is byte-offset into that line
         let column = start.saturating_sub(line_start);
         // Underline at least one caret, even for zero-width spans
-        let underline_len = (end.saturating_sub(start)).max(1);
+        let underline_len = end.saturating_sub(start).max(1);
         let caret = " ".repeat(column) + &"^".repeat(underline_len);
         format!("line {line_number}: {message}\n{line}\n{caret}")
     }
@@ -86,6 +91,7 @@ impl Error {
             Error::InvalidToken(_, range) => Self::format_message(self, source, range),
             Error::UnknownUrType(_, range) => Self::format_message(self, source, range),
             Error::UnmatchedParentheses(range) => Self::format_message(self, source, range),
+            Error::ExpectedComma(range) => Self::format_message(self, source, range),
             Error::ExpectedColonAfterMapKey(range) => Self::format_message(self, source, range),
             Error::ExpectedMapKey(range) => Self::format_message(self, source, range),
             Error::UnmatchedBraces(range) => Self::format_message(self, source, range),
@@ -143,7 +149,6 @@ pub fn parse_dcbor_item(src: &str) -> Result<CBOR> {
     match first_token {
         Ok(token) => {
             parse_item_token(&token, &mut lexer).and_then(|cbor| {
-
                 if lexer.next().is_some() { Err(Error::ExtraData(lexer.span())) } else { Ok(cbor) }
             })
         }
@@ -218,7 +223,12 @@ fn parse_ur(ur: &UR, span: Span) -> Result<CBOR> {
     if let Some(tag) = tag_for_name(ur_type) {
         Ok(CBOR::to_tagged_value(tag, ur.cbor()))
     } else {
-        Err(Error::UnknownUrType(ur_type.to_string(), (span.start + 3)..(span.start + 3 + ur_type.len())))
+        Err(
+            Error::UnknownUrType(
+                ur_type.to_string(),
+                span.start + 3..span.start + 3 + ur_type.len()
+            )
+        )
     }
 }
 
@@ -333,7 +343,15 @@ fn parse_map(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
     let mut awaits_key = false;
 
     loop {
-        let token = expect_token(lexer)?;
+        let token = match expect_token(lexer) {
+            Ok(tok) => tok,
+            Err(e) if e == Error::UnexpectedEndOfInput => {
+                return Err(Error::UnmatchedBraces(lexer.span()));
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        };
         match token {
             Token::BraceClose if !awaits_key => {
                 return Ok(map.into());
