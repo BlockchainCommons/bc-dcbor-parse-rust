@@ -2,7 +2,7 @@
 name = "dcbor-parse"
 version = "0.1.0"
 edition = "2024"
-description = "dCBOR Diagnostic Parser and Composer for Rust."
+description = "dCBOR Diagnostic Parser and Composer for Rust"
 authors = ["Blockchain Commons"]
 repository = "https://github.com/BlockchainCommons/bc-dcbor-parse-rust"
 readme = "README.md"
