@@ -1,0 +1,145 @@
+use base64::Engine as _;
+use std::collections::HashMap;
+use bc_ur::prelude::*;
+
+use dcbor_parse::parse_dcbor_item;
+
+fn roundtrip<T: Into<CBOR>>(value: T) {
+    let cbor = value.into();
+    // println!("=== Original ===\n{}", cbor.diagnostic());
+    let src = cbor.diagnostic();
+    match parse_dcbor_item(&src) {
+        Ok(result) => {
+            println!("{}", result.diagnostic());
+            if result != cbor {
+                panic!("=== Expected ===\n{}\n\n=== Got ===\n{}", cbor, result);
+            }
+        }
+        Err(e) => panic!("{:?}: Failed to parse: {}", e.span(), e.message()),
+    }
+}
+
+#[test]
+fn test_basic_types() {
+    roundtrip(true);
+    roundtrip(false);
+    roundtrip(CBOR::null());
+    roundtrip(10);
+    roundtrip(3.14);
+    roundtrip(f64::INFINITY);
+    roundtrip(f64::NEG_INFINITY);
+    roundtrip("Hello, world!");
+}
+
+fn hex_diagnostic(bytes: &[u8]) -> String {
+    let hex = hex::encode(bytes);
+    format!("h'{}'", hex)
+}
+
+fn base64_diagnostic(bytes: &[u8]) -> String {
+    format!("b64'{}'", base64::engine::general_purpose::STANDARD.encode(bytes))
+}
+
+#[test]
+fn test_byte_string() {
+    let bytes = vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a];
+    let cbor = CBOR::to_byte_string(bytes.clone());
+    roundtrip(cbor.clone());
+
+    let hex = hex_diagnostic(&bytes);
+    assert_eq!(hex, "h'0102030405060708090a'");
+    let cbor2 = parse_dcbor_item(&hex).unwrap();
+    assert_eq!(cbor2, cbor);
+
+    let base64 = base64_diagnostic(&bytes);
+    assert_eq!(base64, "b64'AQIDBAUGBwgJCg=='");
+    let cbor3 = parse_dcbor_item(&base64).unwrap();
+    assert_eq!(cbor3, cbor);
+}
+
+#[test]
+fn test_nan() {
+    // NaN is a special case because it doesn't equal itself
+    let cbor = CBOR::from(f64::NAN);
+    let src = cbor.diagnostic();
+    assert_eq!(src, "NaN");
+    let cbor2 = parse_dcbor_item(&src).unwrap();
+    assert!(f64::try_from(cbor2).unwrap().is_nan());
+}
+
+#[test]
+fn test_tagged() {
+    roundtrip(CBOR::to_tagged_value(1234, CBOR::to_byte_string(vec![0x01, 0x02, 0x03])));
+    roundtrip(CBOR::to_tagged_value(5678, "Hello, world!"));
+    roundtrip(CBOR::to_tagged_value(9012, true));
+}
+
+#[test]
+fn test_array() {
+    let v: Vec<i32> = vec![];
+    roundtrip(v);
+
+    roundtrip(vec![1, 2, 3]);
+    roundtrip(vec![true.to_cbor(), false.to_cbor(), CBOR::null()]);
+    roundtrip(vec![CBOR::to_byte_string(vec![0x01, 0x02]).to_cbor(), "Hello".to_cbor()]);
+    roundtrip(vec![vec![1, 2], vec![3, 4]]);
+}
+
+#[test]
+fn test_map() {
+    let m1: HashMap<String, i32> = HashMap::new();
+    roundtrip(m1);
+
+    let mut m2 = HashMap::new();
+    m2.insert("key1", 1);
+    m2.insert("key2", 2);
+    m2.insert("key3", 3);
+    roundtrip(m2);
+
+    let mut m3 = HashMap::new();
+    m3.insert(1, "value1");
+    m3.insert(2, "value2");
+    m3.insert(3, "value3");
+    roundtrip(m3.clone());
+
+    let mut m4 = HashMap::new();
+    m4.insert("key1", CBOR::to_byte_string(vec![0x01, 0x02]));
+    m4.insert("key2", "value2".to_cbor());
+    m4.insert("key3", m3.to_cbor());
+    roundtrip(m4);
+}
+
+#[test]
+fn test_nested() {
+    let nested = vec![
+        CBOR::to_tagged_value(1234, CBOR::to_byte_string(vec![0x01, 0x02, 0x03])),
+        vec![1, 2, 3].to_cbor(),
+        HashMap::from([
+            ("key1", "value1".to_cbor()),
+            ("key2", vec![4, 5, 6].to_cbor()),
+        ]).to_cbor()
+    ];
+    roundtrip(nested);
+}
+
+#[test]
+fn test_ur() {
+    dcbor::register_tags();
+    let date = dcbor::Date::from_ymd(2025, 5, 15);
+    let ur = date.ur_string();
+    assert_eq!(ur, "ur:date/cyisdadmlasgtapttl");
+    let date2 = dcbor::Date::from_ur_string(&ur).unwrap();
+    assert_eq!(date2, date);
+    let date_cbor = parse_dcbor_item(&ur).unwrap();
+    assert_eq!(date_cbor, date.to_cbor());
+}
+
+#[test]
+fn test_named_tag() {
+    dcbor::register_tags();
+    let date_cbor = dcbor::Date::from_ymd(2025, 5, 15).to_cbor();
+    // Replace '1(` with `date(`:
+    let date_diag = date_cbor.diagnostic().to_string().replace("1(", "date(");
+    let date_cbor2 = parse_dcbor_item(&date_diag).unwrap();
+    assert_eq!(date_cbor2, date_cbor);
+}
