@@ -2,6 +2,24 @@
 name = "dcbor-parse"
 version = "0.1.0"
 edition = "2024"
+description = "dCBOR Diagnostic Parser and Composer for Rust."
+authors = ["Blockchain Commons"]
+repository = "https://github.com/BlockchainCommons/bc-dcbor-parse-rust"
+readme = "README.md"
+license = "BSD-2-Clause-Patent"
+documentation = "https://docs.rs/dcbor-parse"
+keywords = [
+    "encoding",
+    "cbor",
+    "binary",
+    "format",
+    "serialization",
+] # Up to five
+categories = [
+    "data-structures",
+    "encoding",
+    "no-std",
+] # https://crates.io/category_slugs
 
 [dependencies]
 dcbor = { version = "^0.19.0", features = ["anyhow", "multithreaded"] }
