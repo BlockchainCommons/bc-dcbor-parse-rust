@@ -2,7 +2,7 @@ use base64::Engine as _;
 use std::collections::HashMap;
 use bc_ur::prelude::*;
 
-use dcbor_parse::parse_dcbor_item;
+use dcbor_parse::{ parse_dcbor_item, ParseError };
 
 fn roundtrip<T: Into<CBOR>>(value: T) {
     let cbor = value.into();
@@ -15,7 +15,7 @@ fn roundtrip<T: Into<CBOR>>(value: T) {
                 panic!("=== Expected ===\n{}\n\n=== Got ===\n{}", cbor, result);
             }
         }
-        Err(e) => panic!("{:?}: Failed to parse: {}", e.span(), e.message()),
+        Err(e) => panic!("{:?}", e),
     }
 }
 
@@ -142,4 +142,59 @@ fn test_named_tag() {
     let date_diag = date_cbor.diagnostic().to_string().replace("1(", "date(");
     let date_cbor2 = parse_dcbor_item(&date_diag).unwrap();
     assert_eq!(date_cbor2, date_cbor);
+}
+
+#[test]
+fn test_errors() {
+    dcbor::register_tags();
+
+    let source = "";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert_eq!(result, Err(ParseError::EmptyInput));
+
+    let source = "q";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::UnrecognizedToken(_))));
+
+    let source = "[1, 2";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::UnexpectedEndOfInput)));
+
+    let source = "[1, 2,\n3, 4,";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::UnexpectedEndOfInput)));
+
+    let source = "1 1";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::ExtraData(_))));
+
+    let source = "ur:foobar/cyisdadmlasgtapttl";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::UnknownUrType(_, _))));
+
+    let source = "1([1, 2, 3]";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::UnmatchedParentheses(_))));
+
+    let source = "{1: 2, 3}";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::ExpectedColonAfterMapKey(_))));
+
+    let source = "{1: 2, 3:}";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::ExpectedMapKey(_))));
+
+    let source = "{1: 2, 3: 4";
+    let result = parse_dcbor_item(source);
+    println!("{}", result.clone().unwrap_err().full_message(source));
+    assert!(matches!(result, Err(ParseError::UnmatchedBraces(_))));
 }

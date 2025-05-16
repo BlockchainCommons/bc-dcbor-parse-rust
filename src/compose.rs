@@ -1,6 +1,17 @@
 use dcbor::prelude::*;
-use crate::parse_dcbor_item;
-use anyhow::{ Result, anyhow };
+use crate::{parse_dcbor_item, ParseError};
+use thiserror::Error;
+
+#[derive(Debug, Error, Clone, PartialEq)]
+#[rustfmt::skip]
+pub enum Error {
+    #[error("Invalid odd map length")]
+    InvalidOddMapLength,
+    #[error("Invalid CBOR item: {0}")]
+    ParseError(#[from] ParseError),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Composes a dCBOR array from a slice of string slices, and returns a CBOR
 /// object representing the array.
@@ -40,7 +51,7 @@ pub fn compose_dcbor_array(array: &[&str]) -> Result<CBOR> {
 /// ```
 pub fn compose_dcbor_map(array: &[&str]) -> Result<CBOR> {
     if array.len() % 2 != 0 {
-        return Err(anyhow!("Invalid odd map length"));
+        return Err(Error::InvalidOddMapLength);
     }
 
     let mut map = Map::new();
