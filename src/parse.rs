@@ -359,26 +359,6 @@ enum Token {
     )]
     TagName(Result<String>),
 
-    /// UR: Uniform Resource
-    ///
-    /// A UR is a URI representation of tagged dCBOR, where the tag is
-    /// represented as a text type component. The last component of the UR is
-    /// the untagged CBOR encoded as ByteWords, including a CRC-32 checksum in
-    /// the last eight letters.
-    ///
-    /// As such, to parse a UR as tagged dCBOR, the correspondence between the
-    /// UR type and the CBOR tag value must be known. This is done by using the
-    /// `with_tags!` macro to access the global tags registry.
-    ///
-    /// Clients wishing to parse URs must register the UR type and its
-    /// corresponding CBOR tag value in the global tags registry. The dCBOR
-    /// crate only registers one tag and name for `date` (tag 1). The `bc-tags`
-    /// crate registers many more. See the `register_tags` functions in these
-    /// crates for examples of how to register tags.
-    ///
-    /// Example:
-    ///
-    /// `ur:date/cyisdadmlasgtapttl`
     #[regex(r#"ur:([a-zA-Z0-9][a-zA-Z0-9-]*)/([a-zA-Z]{8,})"#, |lex|
         let s = lex.slice();
         let ur = UR::from_ur_string(s);
