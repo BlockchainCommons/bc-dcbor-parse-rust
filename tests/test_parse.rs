@@ -145,6 +145,38 @@ fn test_named_tag() {
 }
 
 #[test]
+fn test_known_value() {
+    let v = known_values::IS_A;
+    let cbor = v.to_cbor();
+    let src = cbor.diagnostic();
+    assert_eq!(src, "40000(1)");
+    let cbor2 = parse_dcbor_item(&src).unwrap();
+    assert_eq!(cbor2, cbor);
+    let src2 = "'1'";
+    let cbor3 = parse_dcbor_item(src2).unwrap();
+    assert_eq!(cbor3, cbor);
+    let src3 = "'isA'";
+    let cbor4 = parse_dcbor_item(src3).unwrap();
+    assert_eq!(cbor4, cbor);
+}
+
+#[test]
+fn test_unit_known_value() {
+    let v = known_values::UNIT;
+    let cbor = v.to_cbor();
+    let src = cbor.diagnostic();
+    assert_eq!(src, "40000(0)");
+    let cbor2 = parse_dcbor_item(&src).unwrap();
+    assert_eq!(cbor2, cbor);
+    let src2 = "'0'";
+    let cbor3 = parse_dcbor_item(&src2).unwrap();
+    assert_eq!(cbor3, cbor);
+    let src3 = "''";
+    let cbor4 = parse_dcbor_item(&src3).unwrap();
+    assert_eq!(cbor4, cbor);
+}
+
+#[test]
 fn test_errors() {
     dcbor::register_tags();
 
@@ -173,4 +205,6 @@ fn test_errors() {
     check_error("b64'AQIDBAUGBwgJCg'", |e| matches!(e, ParseError::InvalidBase64String(_)));
     check_error("ur:foobar/cyisdadmlasgtapttl", |e| matches!(e, ParseError::UnknownUrType(_, _)));
     check_error("ur:date/cyisdadmlasgtapttx", |e| matches!(e, ParseError::InvalidUr(_, _)));
+    check_error("'20000000000000000000'", |e| matches!(e, ParseError::InvalidKnownValue(_, _)));
+    check_error("'foobar'", |e| matches!(e, ParseError::UnknownKnownValueName(_, _)));
 }

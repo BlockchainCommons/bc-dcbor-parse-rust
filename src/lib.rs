@@ -22,7 +22,7 @@
 //!
 //! | Type                | Example(s)                                                  |
 //! | ------------------- | ----------------------------------------------------------- |
-//! | Boolean             | `true`<br>`false`                                             |
+//! | Boolean             | `true`<br>`false`                                           |
 //! | Null                | `null`                                                      |
 //! | Integers            | `0`<br>`1`<br>`-1`<br>`42`                                  |
 //! | Floats              | `3.14`<br>`-2.5`<br>`Infinity`<br>`-Infinity`<br>`NAN`      |
@@ -31,6 +31,7 @@
 //! | Base64 Byte Strings | `b64'AQIDBAUGBwgJCg=='`                                     |
 //! | Tagged Values       | `1234("hello")`<br>`5678(3.14)`                             |
 //! | Name-Tagged Values  | `tag-name("hello")`<br>`tag-name(3.14)`                     |
+//! | Known Values        | `'1'`<br>`'isA'`                                            |
 //! | URs                 | `ur:date/cyisdadmlasgtapttl`                                |
 //! | Arrays              | `[1, 2, 3]`<br>`["hello", "world"]`<br>`[1, [2, 3]]`        |
 //! | Maps                | `{1: 2, 3: 4}`<br>`{"key": "value"}`<br>`{1: [2, 3], 4: 5}` |
@@ -54,7 +55,12 @@
 //! for examples of how to register your own tags.
 
 mod parse;
-pub use parse::{parse_dcbor_item, Error as ParseError, Result as ParseResult};
+pub use parse::{ parse_dcbor_item, Error as ParseError, Result as ParseResult };
 
 mod compose;
-pub use compose::{ compose_dcbor_array, compose_dcbor_map, Error as ComposeError, Result as ComposeResult };
+pub use compose::{
+    compose_dcbor_array,
+    compose_dcbor_map,
+    Error as ComposeError,
+    Result as ComposeResult,
+};

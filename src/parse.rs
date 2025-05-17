@@ -1,5 +1,6 @@
 use base64::Engine as _;
 use bc_ur::prelude::*;
+use known_values::KnownValue;
 use logos::{ Lexer, Logos, Span };
 use thiserror::Error;
 
@@ -38,6 +39,10 @@ pub enum Error {
     UnknownUrType(String, Span),
     #[error("Invalid UR '{0}'")]
     InvalidUr(String, Span),
+    #[error("Invalid known value '{0}'")]
+    InvalidKnownValue(String, Span),
+    #[error("Unknown known value name '{0}'")]
+    UnknownKnownValueName(String, Span),
 }
 
 impl Error {
@@ -93,6 +98,8 @@ impl Error {
             Error::InvalidBase64String(range) => Self::format_message(self, source, range),
             Error::InvalidTagValue(_, range) => Self::format_message(self, source, range),
             Error::InvalidUr(_, range) => Self::format_message(self, source, range),
+            Error::InvalidKnownValue(_, range) => Self::format_message(self, source, range),
+            Error::UnknownKnownValueName(_, range) => Self::format_message(self, source, range),
         }
     }
 }
@@ -190,6 +197,9 @@ fn parse_item_token(token: &Token, lexer: &mut Lexer<'_, Token>) -> Result<CBOR>
     if let Token::UR(Err(e)) = token {
         return Err(e.clone());
     }
+    if let Token::KnownValueNumber(Err(e)) = token {
+        return Err(e.clone());
+    }
 
     match token {
         Token::Bool(b) => Ok((*b).into()),
@@ -204,6 +214,15 @@ fn parse_item_token(token: &Token, lexer: &mut Lexer<'_, Token>) -> Result<CBOR>
         Token::UR(Ok(ur)) => parse_ur(ur, lexer.span()),
         Token::TagValue(Ok(tag_value)) => parse_number_tag(*tag_value, lexer),
         Token::TagName(name) => parse_name_tag(&name, lexer),
+        Token::KnownValueNumber(Ok(value)) => Ok(KnownValue::new(*value).into()),
+        Token::KnownValueName(name) => {
+            if let Some(known_value) = known_value_for_name(&name) {
+                Ok(known_value.into())
+            } else {
+                let span = lexer.span().start + 1..lexer.span().end - 1;
+                Err(Error::UnknownKnownValueName(name.clone(), span))
+            }
+        }
         Token::BracketOpen => parse_array(lexer),
         Token::BraceOpen => parse_map(lexer),
         _ => Err(Error::UnexpectedToken(Box::new(token.clone()), lexer.span())),
@@ -221,6 +240,12 @@ fn parse_string(s: &str, span: Span) -> Result<CBOR> {
 
 fn tag_for_name(name: &str) -> Option<Tag> {
     with_tags!(|tags: &TagsStore| tags.tag_for_name(name))
+}
+
+fn known_value_for_name(name: &str) -> Option<KnownValue> {
+    let binding = known_values::KNOWN_VALUES.get();
+    let known_values = binding.as_ref().unwrap();
+    known_values.known_value_named(name).cloned()
 }
 
 fn parse_ur(ur: &UR, span: Span) -> Result<CBOR> {
@@ -319,6 +344,18 @@ fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
             }
             Token::TagName(name) if !awaits_comma => {
                 items.push(parse_name_tag(&name, lexer)?);
+                awaits_item = false;
+            }
+            Token::KnownValueNumber(Ok(value)) if !awaits_comma => {
+                items.push(KnownValue::new(value).into());
+                awaits_item = false;
+            }
+            Token::KnownValueName(name) if !awaits_comma => {
+                if let Some(known_value) = known_value_for_name(&name) {
+                    items.push(known_value.into());
+                } else {
+                    return Err(Error::UnknownKnownValueName(name, lexer.span()));
+                }
                 awaits_item = false;
             }
             Token::BracketOpen if !awaits_comma => {
@@ -488,6 +525,24 @@ pub enum Token {
         lex.slice()[..lex.slice().len()-1].to_string()
     )]
     TagName(String),
+
+    /// Integer (same regex as TagValue) enclosed in single quotes.
+    #[regex(r#"'0'|'[1-9][0-9]*'"#, |lex|
+        let span = (lex.span().start + 1)..(lex.span().end - 1);
+        let slice = lex.slice();
+        let stripped = slice[1..slice.len() - 1].to_string();
+        stripped.parse::<TagValue>().map_err(|_|
+                Error::InvalidKnownValue(stripped, span)
+            )
+    )]
+    KnownValueNumber(Result<u64>),
+
+    /// Single-quoted empty string (i.e., `''`) (Unit) or Identifier (same regex
+    /// as for tag names) enclosed in single quotes.
+    #[regex(r#"''|'[a-zA-Z_][a-zA-Z0-9_-]*'"#, |lex|
+        lex.slice()[1..lex.slice().len()-1].to_string()
+    )]
+    KnownValueName(String),
 
     #[regex(r#"ur:([a-zA-Z0-9][a-zA-Z0-9-]*)/([a-zA-Z]{8,})"#, |lex|
         let s = lex.slice();
