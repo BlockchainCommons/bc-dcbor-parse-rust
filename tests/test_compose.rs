@@ -3,7 +3,7 @@ use dcbor_parse::*;
 fn roundtrip_array(array: &[&str], expected_diag: &str) {
     let cbor = compose_dcbor_array(array).unwrap();
     let diag = cbor.diagnostic_flat();
-    println!("{}", diag);
+    // println!("{}", diag);
     assert_eq!(diag, expected_diag);
     let cbor2 = parse_dcbor_item(&diag).unwrap();
     assert_eq!(cbor, cbor2);
@@ -12,7 +12,7 @@ fn roundtrip_array(array: &[&str], expected_diag: &str) {
 fn roundtrip_map(array: &[&str], expected_diag: &str) {
     let cbor = compose_dcbor_map(array).unwrap();
     let diag = cbor.diagnostic_flat();
-    println!("{}", diag);
+    // println!("{}", diag);
     assert_eq!(diag, expected_diag);
     let cbor2 = parse_dcbor_item(&diag).unwrap();
     assert_eq!(cbor, cbor2);
@@ -44,6 +44,11 @@ fn test_compose_array() {
     let array = vec!["[1, 2]", "[3, 4]"];
     let expected_diag = "[[1, 2], [3, 4]]";
     roundtrip_array(&array, expected_diag);
+
+    // Error: Empty item in array
+    let array = vec!["1", "2", "", "4"];
+    let err = compose_dcbor_array(&array).unwrap_err();
+    assert!(matches!(err, ComposeError::ParseError(ParseError::EmptyInput)));
 }
 
 #[test]
@@ -82,4 +87,14 @@ fn test_compose_map() {
     let array = vec!["1", "2", "1", "3"];
     let expected_diag = "{1: 3}";
     roundtrip_map(&array, expected_diag);
+
+    // Error: Odd number of items in map
+    let array = vec!["1", "2", "3"];
+    let err = compose_dcbor_map(&array).unwrap_err();
+    assert!(matches!(err, ComposeError::OddMapLength));
+
+    // Error: Empty item in map
+    let array = vec!["1", "2", "", "4"];
+    let err = compose_dcbor_map(&array).unwrap_err();
+    assert!(matches!(err, ComposeError::ParseError(ParseError::EmptyInput)));
 }

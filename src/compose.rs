@@ -1,12 +1,12 @@
 use dcbor::prelude::*;
-use crate::{parse_dcbor_item, ParseError};
+use crate::{ parse_dcbor_item, ParseError };
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq)]
 #[rustfmt::skip]
 pub enum Error {
     #[error("Invalid odd map length")]
-    InvalidOddMapLength,
+    OddMapLength,
     #[error("Invalid CBOR item: {0}")]
     ParseError(#[from] ParseError),
 }
@@ -51,7 +51,7 @@ pub fn compose_dcbor_array(array: &[&str]) -> Result<CBOR> {
 /// ```
 pub fn compose_dcbor_map(array: &[&str]) -> Result<CBOR> {
     if array.len() % 2 != 0 {
-        return Err(Error::InvalidOddMapLength);
+        return Err(Error::OddMapLength);
     }
 
     let mut map = Map::new();

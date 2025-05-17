@@ -10,7 +10,7 @@ fn roundtrip<T: Into<CBOR>>(value: T) {
     let src = cbor.diagnostic();
     match parse_dcbor_item(&src) {
         Ok(result) => {
-            println!("{}", result.diagnostic());
+            // println!("{}", result.diagnostic());
             if result != cbor {
                 panic!("=== Expected ===\n{}\n\n=== Got ===\n{}", cbor, result);
             }
@@ -151,25 +151,26 @@ fn test_errors() {
     fn check_error<F>(source: &str, expected: F) where F: Fn(&ParseError) -> bool {
         let result = parse_dcbor_item(source);
         let err = result.unwrap_err();
-        println!("{}", err.full_message(source));
+        // println!("{}", err.full_message(source));
         assert!(expected(&err), "Unexpected error for source `{}`: {:?}", source, err);
     }
 
     check_error("", |e| matches!(e, ParseError::EmptyInput));
-    check_error("q", |e| matches!(e, ParseError::UnrecognizedToken(_)));
-    check_error("1 1", |e| matches!(e, ParseError::ExtraData(_)));
     check_error("[1, 2", |e| matches!(e, ParseError::UnexpectedEndOfInput));
     check_error("[1, 2,\n3, 4,", |e| matches!(e, ParseError::UnexpectedEndOfInput));
+    check_error("1 1", |e| matches!(e, ParseError::ExtraData(_)));
+    check_error("(", |e| matches!(e, ParseError::UnexpectedToken(_, _)));
+    check_error("q", |e| matches!(e, ParseError::UnrecognizedToken(_)));
     check_error("[1 2 3]", |e| matches!(e, ParseError::ExpectedComma(_)));
-    check_error("1([1, 2, 3]", |e| matches!(e, ParseError::UnmatchedParentheses(_)));
     check_error("{1: 2, 3}", |e| matches!(e, ParseError::ExpectedColon(_)));
-    check_error("{1: 2, 3:}", |e| matches!(e, ParseError::ExpectedMapKey(_)));
-    check_error("{1: 2, 3: 4", |e| matches!(e, ParseError::UnmatchedBraces(_)));
     check_error("{1: 2 3: 4}", |e| matches!(e, ParseError::ExpectedComma(_)));
+    check_error("1([1, 2, 3]", |e| matches!(e, ParseError::UnmatchedParentheses(_)));
+    check_error("{1: 2, 3: 4", |e| matches!(e, ParseError::UnmatchedBraces(_)));
+    check_error("{1: 2, 3:}", |e| matches!(e, ParseError::ExpectedMapKey(_)));
+    check_error("20000000000000000000(1)", |e| matches!(e, ParseError::InvalidTagValue(_, _)));
+    check_error("foobar(1)", |e| matches!(e, ParseError::UnknownTagName(_, _)));
     check_error("h'01020'", |e| matches!(e, ParseError::InvalidHexString(_)));
     check_error("b64'AQIDBAUGBwgJCg'", |e| matches!(e, ParseError::InvalidBase64String(_)));
-    check_error("20000000000000000000(1)", |e| matches!(e, ParseError::InvalidTagNumber(_, _)));
-    check_error("foobar(1)", |e| matches!(e, ParseError::UnknownTagName(_, _)));
     check_error("ur:foobar/cyisdadmlasgtapttl", |e| matches!(e, ParseError::UnknownUrType(_, _)));
     check_error("ur:date/cyisdadmlasgtapttx", |e| matches!(e, ParseError::InvalidUr(_, _)));
 }
