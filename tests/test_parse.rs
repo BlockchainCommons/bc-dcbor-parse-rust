@@ -174,6 +174,9 @@ fn test_unit_known_value() {
     let src3 = "''";
     let cbor4 = parse_dcbor_item(&src3).unwrap();
     assert_eq!(cbor4, cbor);
+    let src4 = "Unit";
+    let cbor5 = parse_dcbor_item(&src4).unwrap();
+    assert_eq!(cbor5, cbor);
 }
 
 #[test]

@@ -32,6 +32,7 @@
 //! | Tagged Values       | `1234("hello")`<br>`5678(3.14)`                             |
 //! | Name-Tagged Values  | `tag-name("hello")`<br>`tag-name(3.14)`                     |
 //! | Known Values        | `'1'`<br>`'isA'`                                            |
+//! | Unit Known Value    | `Unit`<br>`''`<br>`'0'`                                     |
 //! | URs                 | `ur:date/cyisdadmlasgtapttl`                                |
 //! | Arrays              | `[1, 2, 3]`<br>`["hello", "world"]`<br>`[1, [2, 3]]`        |
 //! | Maps                | `{1: 2, 3: 4}`<br>`{"key": "value"}`<br>`{1: [2, 3], 4: 5}` |

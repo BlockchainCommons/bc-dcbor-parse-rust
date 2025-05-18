@@ -223,6 +223,7 @@ fn parse_item_token(token: &Token, lexer: &mut Lexer<'_, Token>) -> Result<CBOR>
                 Err(Error::UnknownKnownValueName(name.clone(), span))
             }
         }
+        Token::Unit => Ok(KnownValue::new(0).into()),
         Token::BracketOpen => parse_array(lexer),
         Token::BraceOpen => parse_map(lexer),
         _ => Err(Error::UnexpectedToken(Box::new(token.clone()), lexer.span())),
@@ -510,7 +511,7 @@ pub enum Token {
     String(String),
 
     /// Integer followed immediately by an opening parenthesis.
-    #[regex(r#"[1-9][0-9]*\("#, |lex|
+    #[regex(r#"0\(|[1-9][0-9]*\("#, |lex|
         let span = (lex.span().start)..(lex.span().end - 1);
         let stripped = lex.slice().strip_suffix('(').unwrap();
         stripped.parse::<TagValue>().map_err(|_|
@@ -543,6 +544,10 @@ pub enum Token {
         lex.slice()[1..lex.slice().len()-1].to_string()
     )]
     KnownValueName(String),
+
+    /// The _unit_ known value `40000(0)`.
+    #[token("Unit")]
+    Unit,
 
     #[regex(r#"ur:([a-zA-Z0-9][a-zA-Z0-9-]*)/([a-zA-Z]{8,})"#, |lex|
         let s = lex.slice();
