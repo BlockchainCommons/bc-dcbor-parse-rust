@@ -25,7 +25,7 @@
 //! | Boolean             | `true`<br>`false`                                           |
 //! | Null                | `null`                                                      |
 //! | Integers            | `0`<br>`1`<br>`-1`<br>`42`                                  |
-//! | Floats              | `3.14`<br>`-2.5`<br>`Infinity`<br>`-Infinity`<br>`NAN`      |
+//! | Floats              | `3.14`<br>`-2.5`<br>`Infinity`<br>`-Infinity`<br>`NaN`      |
 //! | Strings             | `"hello"`<br>`"🌎"`                                      |
 //! | Hex Byte Strings    | `h'68656c6c6f'`                                             |
 //! | Base64 Byte Strings | `b64'AQIDBAUGBwgJCg=='`                                     |
