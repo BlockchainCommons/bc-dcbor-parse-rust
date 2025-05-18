@@ -431,7 +431,7 @@ fn parse_map(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
 #[derive(Debug, Clone, Logos, PartialEq)]
 #[rustfmt::skip]
 #[logos(error = Error)]
-#[logos(skip r"[ \t\r\n\f]+")]
+#[logos(skip r"(?:[ \t\r\n\f]|/[^/]*/|#[^\n]*)+")]
 pub enum Token {
     #[token("false", |_| false)]
     #[token("true", |_| true)]

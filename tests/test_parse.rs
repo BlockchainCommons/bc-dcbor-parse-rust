@@ -1,7 +1,7 @@
 use base64::Engine as _;
 use std::collections::HashMap;
 use bc_ur::prelude::*;
-
+use indoc::indoc;
 use dcbor_parse::{ parse_dcbor_item, ParseError };
 
 fn roundtrip<T: Into<CBOR>>(value: T) {
@@ -207,4 +207,40 @@ fn test_errors() {
     check_error("ur:date/cyisdadmlasgtapttx", |e| matches!(e, ParseError::InvalidUr(_, _)));
     check_error("'20000000000000000000'", |e| matches!(e, ParseError::InvalidKnownValue(_, _)));
     check_error("'foobar'", |e| matches!(e, ParseError::UnknownKnownValueName(_, _)));
+}
+
+#[test]
+fn test_whitespace() {
+    let src = indoc! {r#"
+        {
+            "Hello":
+                "World"
+        }
+    "#}.trim();
+    let result = parse_dcbor_item(&src).unwrap();
+    println!("{}", result.diagnostic());
+}
+
+#[test]
+fn test_whitespace_2() {
+    let src = indoc! {r#"
+        {"Hello":
+        "World"}
+    "#}.trim();
+    let result = parse_dcbor_item(&src).unwrap();
+    println!("{}", result.diagnostic());
+}
+
+#[test]
+fn test_inline_comments() {
+    let src = "/this is a comment/ [1, /ignore me/ 2, 3]";
+    let result = parse_dcbor_item(src).unwrap();
+    assert_eq!(result, vec![1, 2, 3].into());
+}
+
+#[test]
+fn test_end_of_line_comments() {
+    let src = "[1, 2, 3] # this should be ignored";
+    let result = parse_dcbor_item(src).unwrap();
+    assert_eq!(result, vec![1, 2, 3].into());
 }

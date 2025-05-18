@@ -31,3 +31,6 @@ thiserror = "^1.0.48"
 base64 = "^0.22.0"
 hex = "0.4.3"
 logos = "0.15.0"
+
+[dev-dependencies]
+indoc = "^2.0.0"
