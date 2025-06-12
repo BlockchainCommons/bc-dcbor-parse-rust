@@ -48,7 +48,10 @@ fn test_compose_array() {
     // Error: Empty item in array
     let array = vec!["1", "2", "", "4"];
     let err = compose_dcbor_array(&array).unwrap_err();
-    assert!(matches!(err, ComposeError::ParseError(ParseError::EmptyInput)));
+    assert!(matches!(
+        err,
+        ComposeError::ParseError(ParseError::EmptyInput)
+    ));
 }
 
 #[test]
@@ -96,5 +99,8 @@ fn test_compose_map() {
     // Error: Empty item in map
     let array = vec!["1", "2", "", "4"];
     let err = compose_dcbor_map(&array).unwrap_err();
-    assert!(matches!(err, ComposeError::ParseError(ParseError::EmptyInput)));
+    assert!(matches!(
+        err,
+        ComposeError::ParseError(ParseError::EmptyInput)
+    ));
 }

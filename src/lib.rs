@@ -56,12 +56,10 @@
 //! for examples of how to register your own tags.
 
 mod parse;
-pub use parse::{ parse_dcbor_item, Error as ParseError, Result as ParseResult };
+pub use parse::{Error as ParseError, Result as ParseResult, parse_dcbor_item};
 
 mod compose;
 pub use compose::{
-    compose_dcbor_array,
+    Error as ComposeError, Result as ComposeResult, compose_dcbor_array,
     compose_dcbor_map,
-    Error as ComposeError,
-    Result as ComposeResult,
 };

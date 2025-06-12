@@ -1,6 +1,7 @@
 use dcbor::prelude::*;
-use crate::{ parse_dcbor_item, ParseError };
 use thiserror::Error;
+
+use crate::{ParseError, parse_dcbor_item};
 
 #[derive(Debug, Error, Clone, PartialEq)]
 #[rustfmt::skip]

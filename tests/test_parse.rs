@@ -1,8 +1,9 @@
-use base64::Engine as _;
 use std::collections::HashMap;
+
+use base64::Engine as _;
 use bc_ur::prelude::*;
+use dcbor_parse::{ParseError, parse_dcbor_item};
 use indoc::indoc;
-use dcbor_parse::{ parse_dcbor_item, ParseError };
 
 fn roundtrip<T: Into<CBOR>>(value: T) {
     let cbor = value.into();
@@ -25,7 +26,7 @@ fn test_basic_types() {
     roundtrip(false);
     roundtrip(CBOR::null());
     roundtrip(10);
-    roundtrip(3.14);
+    roundtrip(3.28);
     roundtrip(f64::INFINITY);
     roundtrip(f64::NEG_INFINITY);
     roundtrip("Hello, world!");
@@ -37,12 +38,16 @@ fn hex_diagnostic(bytes: &[u8]) -> String {
 }
 
 fn base64_diagnostic(bytes: &[u8]) -> String {
-    format!("b64'{}'", base64::engine::general_purpose::STANDARD.encode(bytes))
+    format!(
+        "b64'{}'",
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    )
 }
 
 #[test]
 fn test_byte_string() {
-    let bytes = vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a];
+    let bytes =
+        vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a];
     let cbor = CBOR::to_byte_string(bytes.clone());
     roundtrip(cbor.clone());
 
@@ -69,7 +74,10 @@ fn test_nan() {
 
 #[test]
 fn test_tagged() {
-    roundtrip(CBOR::to_tagged_value(1234, CBOR::to_byte_string(vec![0x01, 0x02, 0x03])));
+    roundtrip(CBOR::to_tagged_value(
+        1234,
+        CBOR::to_byte_string(vec![0x01, 0x02, 0x03]),
+    ));
     roundtrip(CBOR::to_tagged_value(5678, "Hello, world!"));
     roundtrip(CBOR::to_tagged_value(9012, true));
 }
@@ -81,7 +89,10 @@ fn test_array() {
 
     roundtrip(vec![1, 2, 3]);
     roundtrip(vec![true.to_cbor(), false.to_cbor(), CBOR::null()]);
-    roundtrip(vec![CBOR::to_byte_string(vec![0x01, 0x02]).to_cbor(), "Hello".to_cbor()]);
+    roundtrip(vec![
+        CBOR::to_byte_string(vec![0x01, 0x02]).to_cbor(),
+        "Hello".to_cbor(),
+    ]);
     roundtrip(vec![vec![1, 2], vec![3, 4]]);
 }
 
@@ -112,12 +123,16 @@ fn test_map() {
 #[test]
 fn test_nested() {
     let nested = vec![
-        CBOR::to_tagged_value(1234, CBOR::to_byte_string(vec![0x01, 0x02, 0x03])),
+        CBOR::to_tagged_value(
+            1234,
+            CBOR::to_byte_string(vec![0x01, 0x02, 0x03]),
+        ),
         vec![1, 2, 3].to_cbor(),
         HashMap::from([
             ("key1", "value1".to_cbor()),
             ("key2", vec![4, 5, 6].to_cbor()),
-        ]).to_cbor()
+        ])
+        .to_cbor(),
     ];
     roundtrip(nested);
 }
@@ -169,13 +184,13 @@ fn test_unit_known_value() {
     let cbor2 = parse_dcbor_item(&src).unwrap();
     assert_eq!(cbor2, cbor);
     let src2 = "'0'";
-    let cbor3 = parse_dcbor_item(&src2).unwrap();
+    let cbor3 = parse_dcbor_item(src2).unwrap();
     assert_eq!(cbor3, cbor);
     let src3 = "''";
-    let cbor4 = parse_dcbor_item(&src3).unwrap();
+    let cbor4 = parse_dcbor_item(src3).unwrap();
     assert_eq!(cbor4, cbor);
     let src4 = "Unit";
-    let cbor5 = parse_dcbor_item(&src4).unwrap();
+    let cbor5 = parse_dcbor_item(src4).unwrap();
     assert_eq!(cbor5, cbor);
 }
 
@@ -183,33 +198,61 @@ fn test_unit_known_value() {
 fn test_errors() {
     dcbor::register_tags();
 
-    fn check_error<F>(source: &str, expected: F) where F: Fn(&ParseError) -> bool {
+    fn check_error<F>(source: &str, expected: F)
+    where
+        F: Fn(&ParseError) -> bool,
+    {
         let result = parse_dcbor_item(source);
         let err = result.unwrap_err();
         // println!("{}", err.full_message(source));
-        assert!(expected(&err), "Unexpected error for source `{}`: {:?}", source, err);
+        assert!(
+            expected(&err),
+            "Unexpected error for source `{}`: {:?}",
+            source,
+            err
+        );
     }
 
     check_error("", |e| matches!(e, ParseError::EmptyInput));
     check_error("[1, 2", |e| matches!(e, ParseError::UnexpectedEndOfInput));
-    check_error("[1, 2,\n3, 4,", |e| matches!(e, ParseError::UnexpectedEndOfInput));
+    check_error("[1, 2,\n3, 4,", |e| {
+        matches!(e, ParseError::UnexpectedEndOfInput)
+    });
     check_error("1 1", |e| matches!(e, ParseError::ExtraData(_)));
     check_error("(", |e| matches!(e, ParseError::UnexpectedToken(_, _)));
     check_error("q", |e| matches!(e, ParseError::UnrecognizedToken(_)));
     check_error("[1 2 3]", |e| matches!(e, ParseError::ExpectedComma(_)));
     check_error("{1: 2, 3}", |e| matches!(e, ParseError::ExpectedColon(_)));
     check_error("{1: 2 3: 4}", |e| matches!(e, ParseError::ExpectedComma(_)));
-    check_error("1([1, 2, 3]", |e| matches!(e, ParseError::UnmatchedParentheses(_)));
-    check_error("{1: 2, 3: 4", |e| matches!(e, ParseError::UnmatchedBraces(_)));
+    check_error("1([1, 2, 3]", |e| {
+        matches!(e, ParseError::UnmatchedParentheses(_))
+    });
+    check_error("{1: 2, 3: 4", |e| {
+        matches!(e, ParseError::UnmatchedBraces(_))
+    });
     check_error("{1: 2, 3:}", |e| matches!(e, ParseError::ExpectedMapKey(_)));
-    check_error("20000000000000000000(1)", |e| matches!(e, ParseError::InvalidTagValue(_, _)));
-    check_error("foobar(1)", |e| matches!(e, ParseError::UnknownTagName(_, _)));
+    check_error("20000000000000000000(1)", |e| {
+        matches!(e, ParseError::InvalidTagValue(_, _))
+    });
+    check_error("foobar(1)", |e| {
+        matches!(e, ParseError::UnknownTagName(_, _))
+    });
     check_error("h'01020'", |e| matches!(e, ParseError::InvalidHexString(_)));
-    check_error("b64'AQIDBAUGBwgJCg'", |e| matches!(e, ParseError::InvalidBase64String(_)));
-    check_error("ur:foobar/cyisdadmlasgtapttl", |e| matches!(e, ParseError::UnknownUrType(_, _)));
-    check_error("ur:date/cyisdadmlasgtapttx", |e| matches!(e, ParseError::InvalidUr(_, _)));
-    check_error("'20000000000000000000'", |e| matches!(e, ParseError::InvalidKnownValue(_, _)));
-    check_error("'foobar'", |e| matches!(e, ParseError::UnknownKnownValueName(_, _)));
+    check_error("b64'AQIDBAUGBwgJCg'", |e| {
+        matches!(e, ParseError::InvalidBase64String(_))
+    });
+    check_error("ur:foobar/cyisdadmlasgtapttl", |e| {
+        matches!(e, ParseError::UnknownUrType(_, _))
+    });
+    check_error("ur:date/cyisdadmlasgtapttx", |e| {
+        matches!(e, ParseError::InvalidUr(_, _))
+    });
+    check_error("'20000000000000000000'", |e| {
+        matches!(e, ParseError::InvalidKnownValue(_, _))
+    });
+    check_error("'foobar'", |e| {
+        matches!(e, ParseError::UnknownKnownValueName(_, _))
+    });
 }
 
 #[test]
@@ -219,8 +262,9 @@ fn test_whitespace() {
             "Hello":
                 "World"
         }
-    "#}.trim();
-    let result = parse_dcbor_item(&src).unwrap();
+    "#}
+    .trim();
+    let result = parse_dcbor_item(src).unwrap();
     println!("{}", result.diagnostic());
 }
 
@@ -229,8 +273,9 @@ fn test_whitespace_2() {
     let src = indoc! {r#"
         {"Hello":
         "World"}
-    "#}.trim();
-    let result = parse_dcbor_item(&src).unwrap();
+    "#}
+    .trim();
+    let result = parse_dcbor_item(src).unwrap();
     println!("{}", result.diagnostic());
 }
 

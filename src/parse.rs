@@ -1,7 +1,7 @@
 use base64::Engine as _;
 use bc_ur::prelude::*;
 use known_values::KnownValue;
-use logos::{ Lexer, Logos, Span };
+use logos::{Lexer, Logos, Span};
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq)]
@@ -50,11 +50,16 @@ impl Error {
         matches!(self, Error::UnrecognizedToken(_))
     }
 
-    fn format_message(message: &dyn ToString, source: &str, range: &Span) -> String {
+    fn format_message(
+        message: &dyn ToString,
+        source: &str,
+        range: &Span,
+    ) -> String {
         let message = message.to_string();
         let start = range.start;
         let end = range.end;
-        // Walk through the bytes up to `start` to find line number and line start offset
+        // Walk through the bytes up to `start` to find line number and line
+        // start offset
         let mut line_number = 1;
         let mut line_start = 0;
         for (idx, ch) in source.char_indices() {
@@ -67,10 +72,7 @@ impl Error {
             }
         }
         // Grab the exact line text (or empty if out of bounds)
-        let line = source
-            .lines()
-            .nth(line_number - 1)
-            .unwrap_or("");
+        let line = source.lines().nth(line_number - 1).unwrap_or("");
         // Column is byte-offset into that line
         let column = start.saturating_sub(line_start);
         // Underline at least one caret, even for zero-width spans
@@ -105,9 +107,7 @@ impl Error {
 }
 
 impl Default for Error {
-    fn default() -> Self {
-        Error::UnrecognizedToken(Span::default())
-    }
+    fn default() -> Self { Error::UnrecognizedToken(Span::default()) }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -145,16 +145,18 @@ pub fn parse_dcbor_item(src: &str) -> Result<CBOR> {
     let mut lexer = Token::lexer(src);
     let first_token = expect_token(&mut lexer);
     match first_token {
-        Ok(token) => {
-            parse_item_token(&token, &mut lexer).and_then(|cbor| {
-                if lexer.next().is_some() { Err(Error::ExtraData(lexer.span())) } else { Ok(cbor) }
-            })
-        }
+        Ok(token) => parse_item_token(&token, &mut lexer).and_then(|cbor| {
+            if lexer.next().is_some() {
+                Err(Error::ExtraData(lexer.span()))
+            } else {
+                Ok(cbor)
+            }
+        }),
         Err(e) => {
             if e == Error::UnexpectedEndOfInput {
                 return Err(Error::EmptyInput);
             }
-            return Err(e);
+            Err(e)
         }
     }
 }
@@ -171,19 +173,24 @@ fn parse_item(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
 fn expect_token(lexer: &mut Lexer<'_, Token>) -> Result<Token> {
     let span = lexer.span();
     match lexer.next() {
-        Some(token_or_err) => {
-            match token_or_err {
-                Ok(token) => { Ok(token) }
-                Err(e) => {
-                    if e.is_default() { Err(Error::UnrecognizedToken(span)) } else { Err(e) }
+        Some(token_or_err) => match token_or_err {
+            Ok(token) => Ok(token),
+            Err(e) => {
+                if e.is_default() {
+                    Err(Error::UnrecognizedToken(span))
+                } else {
+                    Err(e)
                 }
             }
-        }
+        },
         None => Err(Error::UnexpectedEndOfInput),
     }
 }
 
-fn parse_item_token(token: &Token, lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
+fn parse_item_token(
+    token: &Token,
+    lexer: &mut Lexer<'_, Token>,
+) -> Result<CBOR> {
     // Handle embedded lexing errors in token payloads
     if let Token::ByteStringHex(Err(e)) = token {
         return Err(e.clone());
@@ -213,10 +220,12 @@ fn parse_item_token(token: &Token, lexer: &mut Lexer<'_, Token>) -> Result<CBOR>
         Token::String(s) => parse_string(s, lexer.span()),
         Token::UR(Ok(ur)) => parse_ur(ur, lexer.span()),
         Token::TagValue(Ok(tag_value)) => parse_number_tag(*tag_value, lexer),
-        Token::TagName(name) => parse_name_tag(&name, lexer),
-        Token::KnownValueNumber(Ok(value)) => Ok(KnownValue::new(*value).into()),
+        Token::TagName(name) => parse_name_tag(name, lexer),
+        Token::KnownValueNumber(Ok(value)) => {
+            Ok(KnownValue::new(*value).into())
+        }
         Token::KnownValueName(name) => {
-            if let Some(known_value) = known_value_for_name(&name) {
+            if let Some(known_value) = known_value_for_name(name) {
                 Ok(known_value.into())
             } else {
                 let span = lexer.span().start + 1..lexer.span().end - 1;
@@ -226,7 +235,10 @@ fn parse_item_token(token: &Token, lexer: &mut Lexer<'_, Token>) -> Result<CBOR>
         Token::Unit => Ok(KnownValue::new(0).into()),
         Token::BracketOpen => parse_array(lexer),
         Token::BraceOpen => parse_map(lexer),
-        _ => Err(Error::UnexpectedToken(Box::new(token.clone()), lexer.span())),
+        _ => Err(Error::UnexpectedToken(
+            Box::new(token.clone()),
+            lexer.span(),
+        )),
     }
 }
 
@@ -254,25 +266,28 @@ fn parse_ur(ur: &UR, span: Span) -> Result<CBOR> {
     if let Some(tag) = tag_for_name(ur_type) {
         Ok(CBOR::to_tagged_value(tag, ur.cbor()))
     } else {
-        Err(
-            Error::UnknownUrType(
-                ur_type.to_string(),
-                span.start + 3..span.start + 3 + ur_type.len()
-            )
-        )
+        Err(Error::UnknownUrType(
+            ur_type.to_string(),
+            span.start + 3..span.start + 3 + ur_type.len(),
+        ))
     }
 }
 
-fn parse_number_tag(tag_value: TagValue, lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
+fn parse_number_tag(
+    tag_value: TagValue,
+    lexer: &mut Lexer<'_, Token>,
+) -> Result<CBOR> {
     let item = parse_item(lexer)?;
     match expect_token(lexer) {
-        Ok(Token::ParenthesisClose) => Ok(CBOR::to_tagged_value(tag_value, item)),
+        Ok(Token::ParenthesisClose) => {
+            Ok(CBOR::to_tagged_value(tag_value, item))
+        }
         Ok(_) => Err(Error::UnmatchedParentheses(lexer.span())),
         Err(e) => {
             if e == Error::UnexpectedEndOfInput {
                 return Err(Error::UnmatchedParentheses(lexer.span()));
             }
-            return Err(e);
+            Err(e)
         }
     }
 }
@@ -288,7 +303,7 @@ fn parse_name_tag(name: &str, lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                 Err(Error::UnknownTagName(name.to_string(), span))
             }
         }
-        _ => { Err(Error::UnmatchedParentheses(lexer.span())) }
+        _ => Err(Error::UnmatchedParentheses(lexer.span())),
     }
 }
 
@@ -355,7 +370,10 @@ fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                 if let Some(known_value) = known_value_for_name(&name) {
                     items.push(known_value.into());
                 } else {
-                    return Err(Error::UnknownKnownValueName(name, lexer.span()));
+                    return Err(Error::UnknownKnownValueName(
+                        name,
+                        lexer.span(),
+                    ));
                 }
                 awaits_item = false;
             }
@@ -377,7 +395,10 @@ fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                 if awaits_comma {
                     return Err(Error::ExpectedComma(lexer.span()));
                 }
-                return Err(Error::UnexpectedToken(Box::new(token), lexer.span()));
+                return Err(Error::UnexpectedToken(
+                    Box::new(token),
+                    lexer.span(),
+                ));
             }
         }
         awaits_comma = !awaits_item;
@@ -392,7 +413,7 @@ fn parse_map(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
     loop {
         let token = match expect_token(lexer) {
             Ok(tok) => tok,
-            Err(e) if e == Error::UnexpectedEndOfInput => {
+            Err(Error::UnexpectedEndOfInput) => {
                 return Err(Error::UnmatchedBraces(lexer.span()));
             }
             Err(e) => {
@@ -411,9 +432,11 @@ fn parse_map(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                     return Err(Error::ExpectedComma(lexer.span()));
                 }
                 let key = parse_item_token(&token, lexer)?;
-                if let Some(Token::Colon) = expect_token(lexer).ok() {
+                if let Ok(Token::Colon) = expect_token(lexer) {
                     let value = match parse_item(lexer) {
-                        Err(Error::UnexpectedToken(token, span)) if *token == Token::BraceClose => {
+                        Err(Error::UnexpectedToken(token, span))
+                            if *token == Token::BraceClose =>
+                        {
                             return Err(Error::ExpectedMapKey(span));
                         }
                         other => other?,
