@@ -13,6 +13,8 @@ It is intended for use in testing, debugging, the `dcbor` command line tool, and
 The primary functions provided are:
 
 - `parse_dcbor_item`: Parses a string in CBOR diagnostic notation into a `CBOR` object.
+- `parse_dcbor_item_partial`: Parses the first item in a string and reports how
+  many bytes were consumed.
 - `compose_dcbor_array`: Composes a `CBOR` array from a slice of strings representing dCBOR items in diagnostic notation.
 - `compose_dcbor_map`: Composes a `CBOR` map from a slice of strings representing the key-value pairs in dCBOR diagnostic notation.
 

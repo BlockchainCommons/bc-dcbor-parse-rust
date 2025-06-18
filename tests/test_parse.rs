@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use base64::Engine as _;
 use bc_ur::prelude::*;
-use dcbor_parse::{ParseError, parse_dcbor_item};
+use dcbor_parse::{ParseError, parse_dcbor_item, parse_dcbor_item_partial};
 use indoc::indoc;
 
 fn roundtrip<T: Into<CBOR>>(value: T) {
@@ -291,4 +291,19 @@ fn test_end_of_line_comments() {
     let src = "[1, 2, 3] # this should be ignored";
     let result = parse_dcbor_item(src).unwrap();
     assert_eq!(result, vec![1, 2, 3].into());
+}
+
+#[test]
+fn test_parse_partial_basic() {
+    let (cbor, used) = parse_dcbor_item_partial("true )").unwrap();
+    assert_eq!(cbor, CBOR::from(true));
+    assert_eq!(used, 5);
+}
+
+#[test]
+fn test_parse_partial_trailing_ws() {
+    let src = "false  # comment\n";
+    let (cbor, used) = parse_dcbor_item_partial(src).unwrap();
+    assert_eq!(cbor, CBOR::from(false));
+    assert_eq!(used, src.len());
 }
