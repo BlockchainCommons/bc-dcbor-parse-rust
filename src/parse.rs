@@ -56,6 +56,43 @@ pub fn parse_dcbor_item(src: &str) -> Result<CBOR> {
     }
 }
 
+/// Parses a dCBOR item from the beginning of a string and returns the parsed
+/// [`CBOR`] along with the number of bytes consumed.
+///
+/// Unlike [`parse_dcbor_item`], this function succeeds even if additional
+/// characters follow the first item. The returned index points to the first
+/// unparsed character after skipping any trailing whitespace or comments.
+///
+/// # Example
+///
+/// ```rust
+/// # use dcbor_parse::parse_dcbor_item_partial;
+/// # use dcbor::prelude::*;
+/// let (cbor, used) = parse_dcbor_item_partial("true )").unwrap();
+/// assert_eq!(cbor, CBOR::from(true));
+/// assert_eq!(used, 5);
+/// ```
+pub fn parse_dcbor_item_partial(src: &str) -> Result<(CBOR, usize)> {
+    let mut lexer = Token::lexer(src);
+    let first_token = expect_token(&mut lexer);
+    match first_token {
+        Ok(token) => parse_item_token(&token, &mut lexer).map(|cbor| {
+            let consumed = match lexer.next() {
+                Some(_) => lexer.span().start,
+                None => src.len(),
+            };
+            (cbor, consumed)
+        }),
+        Err(e) => {
+            if e == Error::UnexpectedEndOfInput {
+                Err(Error::EmptyInput)
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
 //
 // === Private Functions ===
 //
