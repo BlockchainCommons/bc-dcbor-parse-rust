@@ -52,7 +52,7 @@ pub enum Token {
     /// Binary string in hex format.
     #[regex(r"h'[0-9a-fA-F]*'", |lex| {
         let hex = lex.slice();
-        let raw_hex = hex[2..hex.len() - 1].as_bytes();
+        let raw_hex = &hex.as_bytes()[2..hex.len() - 1];
         if raw_hex.len() % 2 != 0 {
             return Err(Error::InvalidHexString(lex.span()));
         }
