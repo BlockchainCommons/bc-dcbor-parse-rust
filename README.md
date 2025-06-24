@@ -27,6 +27,7 @@ The syntactical types supported are:
 | Integers            | `0`<br>`1`<br>`-1`<br>`42`                                  |
 | Floats              | `3.14`<br>`-2.5`<br>`Infinity`<br>`-Infinity`<br>`NaN`      |
 | Strings             | `"hello"`<br>`"🌎"`                                          |
+| ISO-8601 Dates      | `2023-10-01T12:00:00Z`<br>`2023-10-01`                      |
 | Hex Byte Strings    | `h'68656c6c6f'`                                             |
 | Base64 Byte Strings | `b64'AQIDBAUGBwgJCg=='`                                     |
 | Tagged Values       | `1234("hello")`<br>`5678(3.14)`                             |

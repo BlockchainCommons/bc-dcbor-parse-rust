@@ -27,6 +27,7 @@
 //! | Integers            | `0`<br>`1`<br>`-1`<br>`42`                                  |
 //! | Floats              | `3.14`<br>`-2.5`<br>`Infinity`<br>`-Infinity`<br>`NaN`      |
 //! | Strings             | `"hello"`<br>`"🌎"`                                      |
+//! | Date Literals       | `2023-02-08`<br>`2023-02-08T15:30:45Z`<br>`1965-05-15`   |
 //! | Hex Byte Strings    | `h'68656c6c6f'`                                             |
 //! | Base64 Byte Strings | `b64'AQIDBAUGBwgJCg=='`                                     |
 //! | Tagged Values       | `1234("hello")`<br>`5678(3.14)`                             |

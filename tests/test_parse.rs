@@ -253,6 +253,14 @@ fn test_errors() {
     check_error("'foobar'", |e| {
         matches!(e, ParseError::UnknownKnownValueName(_, _))
     });
+
+    // Test invalid date literals
+    check_error("2023-13-01", |e| {
+        matches!(e, ParseError::InvalidDateString(_, _))
+    });
+    check_error("2023-02-30", |e| {
+        matches!(e, ParseError::InvalidDateString(_, _))
+    });
 }
 
 #[test]
@@ -306,4 +314,152 @@ fn test_parse_partial_trailing_ws() {
     let (cbor, used) = parse_dcbor_item_partial(src).unwrap();
     assert_eq!(cbor, CBOR::from(false));
     assert_eq!(used, src.len());
+}
+
+#[test]
+fn test_date_literals() {
+    dcbor::register_tags();
+
+    // Test parsing a simple date
+    let date_cbor = parse_dcbor_item("2023-02-08").unwrap();
+    let expected_date = dcbor::Date::from_ymd(2023, 2, 8);
+    assert_eq!(date_cbor, expected_date.to_cbor());
+
+    // Test parsing a date-time
+    let datetime_cbor = parse_dcbor_item("2023-02-08T15:30:45Z").unwrap();
+    let expected_datetime = dcbor::Date::from_ymd_hms(2023, 2, 8, 15, 30, 45);
+    assert_eq!(datetime_cbor, expected_datetime.to_cbor());
+
+    // Test parsing an array with dates (the main goal)
+    let array_cbor =
+        parse_dcbor_item("[1965-05-15, 2000-07-25, 2004-10-30]").unwrap();
+    let expected_array = vec![
+        dcbor::Date::from_ymd(1965, 5, 15).to_cbor(),
+        dcbor::Date::from_ymd(2000, 7, 25).to_cbor(),
+        dcbor::Date::from_ymd(2004, 10, 30).to_cbor(),
+    ];
+    assert_eq!(array_cbor, expected_array.to_cbor());
+
+    // Test that the diagnostic output doesn't have quotes (they're not strings)
+    let diagnostic = array_cbor.diagnostic();
+    assert!(
+        !diagnostic.contains('"'),
+        "Date literals should not be quoted in diagnostic output"
+    );
+}
+
+#[test]
+fn test_date_literals_extended() {
+    dcbor::register_tags();
+
+    // Test date with time including seconds and timezone
+    let datetime_with_tz =
+        parse_dcbor_item("2023-02-08T15:30:45+01:00").unwrap();
+    println!(
+        "Parsed datetime with timezone: {}",
+        datetime_with_tz.diagnostic()
+    );
+
+    // Test date in a map
+    let map_with_dates =
+        parse_dcbor_item(r#"{"start": 2023-01-01, "end": 2023-12-31}"#)
+            .unwrap();
+    println!("Parsed map with dates: {}", map_with_dates.diagnostic());
+
+    // Test nested structure with dates
+    let nested = parse_dcbor_item(r#"{"events": [2023-01-01T00:00:00Z, 2023-06-15T12:30:00Z], "metadata": {"created": 2023-02-08}}"#).unwrap();
+    println!("Parsed nested structure: {}", nested.diagnostic());
+}
+
+#[test]
+fn test_date_literal_errors() {
+    dcbor::register_tags();
+
+    // Test invalid date format
+    let result = parse_dcbor_item("2023-13-01"); // Invalid month
+    match result {
+        Err(dcbor_parse::ParseError::InvalidDateString(_, _)) => {
+            // Expected error
+        }
+        _ => panic!("Expected InvalidDateString error for invalid date"),
+    }
+
+    // Test incomplete date
+    let result = parse_dcbor_item("2023-02"); // Incomplete date
+    match result {
+        Err(_) => {
+            // Expected some kind of error
+        }
+        Ok(_) => panic!("Expected error for incomplete date"),
+    }
+}
+
+#[test]
+fn test_user_requested_example() {
+    dcbor::register_tags();
+
+    // Test the exact example from the user's request
+    let array_result = parse_dcbor_item("[1965-05-15, 2000-07-25, 2004-10-30]");
+    assert!(
+        array_result.is_ok(),
+        "Should parse array of date literals successfully"
+    );
+
+    let cbor = array_result.unwrap();
+    let diagnostic = cbor.diagnostic();
+
+    // Verify the dates are parsed as Date objects (tag 1) not strings
+    assert!(
+        diagnostic.contains("1("),
+        "Should contain CBOR tag 1 for dates"
+    );
+    assert!(
+        !diagnostic.contains('"'),
+        "Should not contain quotes (dates are not strings)"
+    );
+
+    // Verify this is equivalent to manually creating the same dates
+    let expected = vec![
+        dcbor::Date::from_ymd(1965, 5, 15).to_cbor(),
+        dcbor::Date::from_ymd(2000, 7, 25).to_cbor(),
+        dcbor::Date::from_ymd(2004, 10, 30).to_cbor(),
+    ];
+    assert_eq!(cbor, expected.to_cbor());
+
+    println!("Successfully parsed: {}", diagnostic);
+}
+
+#[test]
+fn test_date_literals_with_milliseconds() {
+    dcbor::register_tags();
+
+    // Test date with milliseconds
+    let datetime_with_ms =
+        parse_dcbor_item("2023-02-08T15:30:45.123Z").unwrap();
+    println!(
+        "Parsed datetime with milliseconds: {}",
+        datetime_with_ms.diagnostic()
+    );
+
+    // Test that it's a valid date object
+    let expected =
+        dcbor::Date::from_string("2023-02-08T15:30:45.123Z").unwrap();
+    assert_eq!(datetime_with_ms, expected.to_cbor());
+}
+
+#[test]
+fn test_date_vs_number_precedence() {
+    dcbor::register_tags();
+
+    // Test that pure numbers still work
+    let number_result = parse_dcbor_item("2023").unwrap();
+    assert_eq!(number_result, CBOR::from(2023));
+
+    // Test that date format is recognized as date, not number
+    let date_result = parse_dcbor_item("2023-01-01").unwrap();
+    let expected_date = dcbor::Date::from_ymd(2023, 1, 1);
+    assert_eq!(date_result, expected_date.to_cbor());
+
+    // Ensure they produce different results
+    assert_ne!(number_result, date_result);
 }

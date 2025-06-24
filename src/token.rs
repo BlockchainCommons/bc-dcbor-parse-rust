@@ -1,5 +1,6 @@
 use base64::Engine as _;
 use bc_ur::prelude::*;
+use dcbor::Date;
 use logos::Logos;
 
 use crate::error::{Error, Result};
@@ -72,6 +73,15 @@ pub enum Token {
         .map_err(|_| Error::InvalidBase64String(lex.span()))
     })]
     ByteStringBase64(Result<Vec<u8>>),
+
+    /// ISO-8601 date literal (date-only or date-time).
+    #[regex(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?", |lex| {
+        let date_str = lex.slice();
+        Date::from_string(date_str).map_err(|_| {
+            Error::InvalidDateString(date_str.to_string(), lex.span())
+        })
+    })]
+    DateLiteral(Result<Date>),
 
     /// JavaScript-style number.
     #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex|

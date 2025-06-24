@@ -42,6 +42,8 @@ pub enum Error {
     InvalidKnownValue(String, Span),
     #[error("Unknown known value name '{0}'")]
     UnknownKnownValueName(String, Span),
+    #[error("Invalid date string '{0}'")]
+    InvalidDateString(String, Span),
 }
 
 impl Error {
@@ -101,6 +103,7 @@ impl Error {
             Error::InvalidUr(_, range) => Self::format_message(self, source, range),
             Error::InvalidKnownValue(_, range) => Self::format_message(self, source, range),
             Error::UnknownKnownValueName(_, range) => Self::format_message(self, source, range),
+            Error::InvalidDateString(_, range) => Self::format_message(self, source, range),
         }
     }
 }
