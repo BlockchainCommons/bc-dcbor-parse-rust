@@ -463,3 +463,68 @@ fn test_date_vs_number_precedence() {
     // Ensure they produce different results
     assert_ne!(number_result, date_result);
 }
+
+#[test]
+fn test_duplicate_map_keys() {
+    // Test string key duplicates
+    let result = parse_dcbor_item(r#"{"key1": 1, "key2": 2, "key1": 3}"#);
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        ParseError::DuplicateMapKey(_) => {} // Expected
+        e => panic!("Expected DuplicateMapKey error, got: {:?}", e),
+    }
+
+    // Test integer key duplicates
+    let result =
+        parse_dcbor_item("{1: \"value1\", 2: \"value2\", 1: \"value3\"}");
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        ParseError::DuplicateMapKey(_) => {} // Expected
+        e => panic!("Expected DuplicateMapKey error, got: {:?}", e),
+    }
+
+    // Test mixed type duplicates - integers and floats with same numeric value
+    // are considered duplicates
+    let result =
+        parse_dcbor_item("{1: \"value1\", 2: \"value2\", 1.0: \"value3\"}");
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        ParseError::DuplicateMapKey(_) => {} /* Expected - 1 and 1.0 are
+                                               * semantically the same key */
+        e => panic!("Expected DuplicateMapKey error, got: {:?}", e),
+    }
+
+    // Test that non-duplicate keys work fine
+    let result = parse_dcbor_item(r#"{"key1": 1, "key2": 2, "key3": 3}"#);
+    assert!(result.is_ok());
+
+    let result =
+        parse_dcbor_item("{1: \"value1\", 2: \"value2\", 3: \"value3\"}");
+    assert!(result.is_ok());
+
+    // Test that integer and float with different values are allowed
+    let result = parse_dcbor_item("{1: \"value1\", 2.0: \"value2\"}");
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_duplicate_key_error_location() {
+    let input = r#"{"key1": 1, "key2": 2, "key1": 3}"#;
+    let result = parse_dcbor_item(input);
+    assert!(result.is_err());
+
+    match result.unwrap_err() {
+        ParseError::DuplicateMapKey(span) => {
+            // The error should point to the second occurrence of "key1"
+            assert_eq!(span.start, 23); // Position of the duplicate "key1"
+            assert_eq!(span.end, 29); // End of the duplicate "key1"
+
+            // Test error message formatting
+            let error = ParseError::DuplicateMapKey(span);
+            let full_message = error.full_message(input);
+            assert!(full_message.contains("Duplicate map key"));
+            assert!(full_message.contains("^")); // Should show caret pointing to the error
+        }
+        e => panic!("Expected DuplicateMapKey error, got: {:?}", e),
+    }
+}

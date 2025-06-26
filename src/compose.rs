@@ -8,6 +8,8 @@ use crate::{ParseError, parse_dcbor_item};
 pub enum Error {
     #[error("Invalid odd map length")]
     OddMapLength,
+    #[error("Duplicate map key")]
+    DuplicateMapKey,
     #[error("Invalid CBOR item: {0}")]
     ParseError(#[from] ParseError),
 }
@@ -56,9 +58,16 @@ pub fn compose_dcbor_map(array: &[&str]) -> Result<CBOR> {
     }
 
     let mut map = Map::new();
+
     for i in (0..array.len()).step_by(2) {
         let key = parse_dcbor_item(array[i])?;
         let value = parse_dcbor_item(array[i + 1])?;
+
+        // Check for duplicate key
+        if map.contains_key(key.clone()) {
+            return Err(Error::DuplicateMapKey);
+        }
+
         map.insert(key, value);
     }
 

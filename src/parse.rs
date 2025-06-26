@@ -372,6 +372,13 @@ fn parse_map(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                     return Err(Error::ExpectedComma(lexer.span()));
                 }
                 let key = parse_item_token(&token, lexer)?;
+                let key_span = lexer.span();
+
+                // Check for duplicate key
+                if map.contains_key(key.clone()) {
+                    return Err(Error::DuplicateMapKey(key_span));
+                }
+
                 if let Ok(Token::Colon) = expect_token(lexer) {
                     let value = match parse_item(lexer) {
                         Err(Error::UnexpectedToken(token, span))

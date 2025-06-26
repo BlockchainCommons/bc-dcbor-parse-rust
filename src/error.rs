@@ -44,6 +44,8 @@ pub enum Error {
     UnknownKnownValueName(String, Span),
     #[error("Invalid date string '{0}'")]
     InvalidDateString(String, Span),
+    #[error("Duplicate map key")]
+    DuplicateMapKey(Span),
 }
 
 impl Error {
@@ -104,6 +106,7 @@ impl Error {
             Error::InvalidKnownValue(_, range) => Self::format_message(self, source, range),
             Error::UnknownKnownValueName(_, range) => Self::format_message(self, source, range),
             Error::InvalidDateString(_, range) => Self::format_message(self, source, range),
+            Error::DuplicateMapKey(range) => Self::format_message(self, source, range),
         }
     }
 }

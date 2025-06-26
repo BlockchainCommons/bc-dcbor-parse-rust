@@ -86,10 +86,10 @@ fn test_compose_map() {
     let expected_diag = "{1: 2, 3: 4}";
     roundtrip_map(&array, expected_diag);
 
-    // Duplicate keys (last wins)
+    // Error: Duplicate keys should throw an error
     let array = vec!["1", "2", "1", "3"];
-    let expected_diag = "{1: 3}";
-    roundtrip_map(&array, expected_diag);
+    let err = compose_dcbor_map(&array).unwrap_err();
+    assert!(matches!(err, ComposeError::DuplicateMapKey));
 
     // Error: Odd number of items in map
     let array = vec!["1", "2", "3"];
