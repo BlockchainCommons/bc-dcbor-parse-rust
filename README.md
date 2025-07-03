@@ -48,8 +48,18 @@ To parse named tags and URs, the correspondence between the tag name (UR type) a
 
 ```toml
 [dependencies]
-dcbor-parse = "0.2.1"
+dcbor-parse = "0.3.0"
 ```
+
+## Version History
+
+### 0.3.0 - July 3, 2025
+
+- Add ISO-8601 date literal parsing support
+- Add duplicate map key detection with proper error handling
+- Add simplified-patterns feature flag for IDE compatibility
+- Align to dependencies
+- Add comprehensive examples and tests for new features
 
 ## Related Projects
 
