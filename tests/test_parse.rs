@@ -140,10 +140,10 @@ fn test_nested() {
 #[test]
 fn test_ur() {
     dcbor::register_tags();
-    let date = dcbor::Date::from_ymd(2025, 5, 15);
+    let date = Date::from_ymd(2025, 5, 15);
     let ur = date.ur_string();
     assert_eq!(ur, "ur:date/cyisdadmlasgtapttl");
-    let date2 = dcbor::Date::from_ur_string(&ur).unwrap();
+    let date2 = Date::from_ur_string(&ur).unwrap();
     assert_eq!(date2, date);
     let date_cbor = parse_dcbor_item(&ur).unwrap();
     assert_eq!(date_cbor, date.to_cbor());
@@ -152,7 +152,7 @@ fn test_ur() {
 #[test]
 fn test_named_tag() {
     dcbor::register_tags();
-    let date_cbor = dcbor::Date::from_ymd(2025, 5, 15).to_cbor();
+    let date_cbor = Date::from_ymd(2025, 5, 15).to_cbor();
     // Replace '1(` with `date(`:
     let date_diag = date_cbor.diagnostic().to_string().replace("1(", "date(");
     let date_cbor2 = parse_dcbor_item(&date_diag).unwrap();
@@ -322,21 +322,21 @@ fn test_date_literals() {
 
     // Test parsing a simple date
     let date_cbor = parse_dcbor_item("2023-02-08").unwrap();
-    let expected_date = dcbor::Date::from_ymd(2023, 2, 8);
+    let expected_date = Date::from_ymd(2023, 2, 8);
     assert_eq!(date_cbor, expected_date.to_cbor());
 
     // Test parsing a date-time
     let datetime_cbor = parse_dcbor_item("2023-02-08T15:30:45Z").unwrap();
-    let expected_datetime = dcbor::Date::from_ymd_hms(2023, 2, 8, 15, 30, 45);
+    let expected_datetime = Date::from_ymd_hms(2023, 2, 8, 15, 30, 45);
     assert_eq!(datetime_cbor, expected_datetime.to_cbor());
 
     // Test parsing an array with dates (the main goal)
     let array_cbor =
         parse_dcbor_item("[1965-05-15, 2000-07-25, 2004-10-30]").unwrap();
     let expected_array = vec![
-        dcbor::Date::from_ymd(1965, 5, 15).to_cbor(),
-        dcbor::Date::from_ymd(2000, 7, 25).to_cbor(),
-        dcbor::Date::from_ymd(2004, 10, 30).to_cbor(),
+        Date::from_ymd(1965, 5, 15).to_cbor(),
+        Date::from_ymd(2000, 7, 25).to_cbor(),
+        Date::from_ymd(2004, 10, 30).to_cbor(),
     ];
     assert_eq!(array_cbor, expected_array.to_cbor());
 
@@ -420,9 +420,9 @@ fn test_user_requested_example() {
 
     // Verify this is equivalent to manually creating the same dates
     let expected = vec![
-        dcbor::Date::from_ymd(1965, 5, 15).to_cbor(),
-        dcbor::Date::from_ymd(2000, 7, 25).to_cbor(),
-        dcbor::Date::from_ymd(2004, 10, 30).to_cbor(),
+        Date::from_ymd(1965, 5, 15).to_cbor(),
+        Date::from_ymd(2000, 7, 25).to_cbor(),
+        Date::from_ymd(2004, 10, 30).to_cbor(),
     ];
     assert_eq!(cbor, expected.to_cbor());
 
@@ -443,7 +443,7 @@ fn test_date_literals_with_milliseconds() {
 
     // Test that it's a valid date object
     let expected =
-        dcbor::Date::from_string("2023-02-08T15:30:45.123Z").unwrap();
+        Date::from_string("2023-02-08T15:30:45.123Z").unwrap();
     assert_eq!(datetime_with_ms, expected.to_cbor());
 }
 
@@ -457,7 +457,7 @@ fn test_date_vs_number_precedence() {
 
     // Test that date format is recognized as date, not number
     let date_result = parse_dcbor_item("2023-01-01").unwrap();
-    let expected_date = dcbor::Date::from_ymd(2023, 1, 1);
+    let expected_date = Date::from_ymd(2023, 1, 1);
     assert_eq!(date_result, expected_date.to_cbor());
 
     // Ensure they produce different results

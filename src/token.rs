@@ -1,6 +1,5 @@
 use base64::Engine as _;
 use bc_ur::prelude::*;
-use dcbor::Date;
 use logos::Logos;
 
 use crate::error::{Error, Result};
