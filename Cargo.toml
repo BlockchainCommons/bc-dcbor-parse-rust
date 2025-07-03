@@ -31,10 +31,12 @@ base64 = "^0.22.0"
 hex = "0.4.3"
 logos = "0.15.0"
 
+[features]
+# Feature flag for simplified patterns (used by rust-analyzer)
+simplified-patterns = []
+
 [dev-dependencies]
 indoc = "^2.0.0"
 
-[package.metadata.rust-analyzer]
-# Increase proc-macro expansion limit
-procMacro.attributes.enable = true
-procMacro.enable = true
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("simplified-patterns"))'] }

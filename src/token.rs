@@ -64,6 +64,7 @@ pub enum Token {
     ByteStringHex(Result<Vec<u8>>),
 
     /// Binary string in base64 format.
+    #[cfg(not(feature = "simplified-patterns"))]
     #[regex(r"b64'([A-Za-z0-9+/=]{2,})'", |lex| {
         let base64 = lex.slice();
         let s = &base64[4..base64.len() - 1];
@@ -73,8 +74,30 @@ pub enum Token {
     })]
     ByteStringBase64(Result<Vec<u8>>),
 
+    /// Binary string in base64 format (simplified for IDE).
+    #[cfg(feature = "simplified-patterns")]
+    #[regex(r"b64'[A-Za-z0-9+/=]*'", |lex| {
+        let base64 = lex.slice();
+        let s = &base64[4..base64.len() - 1];
+        base64::engine::general_purpose::STANDARD
+        .decode(s)
+        .map_err(|_| Error::InvalidBase64String(lex.span()))
+    })]
+    ByteStringBase64(Result<Vec<u8>>),
+
     /// ISO-8601 date literal (date-only or date-time).
+    #[cfg(not(feature = "simplified-patterns"))]
     #[regex(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?", |lex| {
+        let date_str = lex.slice();
+        Date::from_string(date_str).map_err(|_| {
+            Error::InvalidDateString(date_str.to_string(), lex.span())
+        })
+    })]
+    DateLiteral(Result<Date>),
+
+    /// ISO-8601 date literal (simplified for IDE).
+    #[cfg(feature = "simplified-patterns")]
+    #[regex(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2})?", |lex| {
         let date_str = lex.slice();
         Date::from_string(date_str).map_err(|_| {
             Error::InvalidDateString(date_str.to_string(), lex.span())
@@ -89,7 +112,15 @@ pub enum Token {
     Number(f64),
 
     /// JavaScript-style string.
+    #[cfg(not(feature = "simplified-patterns"))]
     #[regex(r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#, |lex|
+        lex.slice().to_owned()
+    )]
+    String(String),
+
+    /// JavaScript-style string (simplified for IDE).
+    #[cfg(feature = "simplified-patterns")]
+    #[regex(r#""[^"]*""#, |lex|
         lex.slice().to_owned()
     )]
     String(String),
