@@ -1,20 +1,20 @@
 use bc_ur::prelude::*;
 use dcbor_parse::parse_dcbor_item;
 
-/// These tests verify that the full regex patterns are used at runtime,
-/// not the simplified patterns that are provided for IDE compatibility.
-///
-/// The simplified patterns are designed to suppress rust-analyzer's
-/// "macro invocation exceeds token limit" errors while preserving
-/// the full functionality of the parser at runtime.
-///
-/// If the simplified patterns were used at runtime, many of these tests
-/// would fail because the simplified patterns don't support:
-/// - Complex string escapes
-/// - Fractional seconds in dates
-/// - Timezone information in dates
-/// - Minimum length requirements for base64
-/// - Control character exclusion in strings
+// These tests verify that the full regex patterns are used at runtime,
+// not the simplified patterns that are provided for IDE compatibility.
+//
+// The simplified patterns are designed to suppress rust-analyzer's
+// "macro invocation exceeds token limit" errors while preserving
+// the full functionality of the parser at runtime.
+//
+// If the simplified patterns were used at runtime, many of these tests
+// would fail because the simplified patterns don't support:
+// - Complex string escapes
+// - Fractional seconds in dates
+// - Timezone information in dates
+// - Minimum length requirements for base64
+// - Control character exclusion in strings
 
 /// Test that basic functionality is preserved with simplified patterns
 #[test]
@@ -40,7 +40,7 @@ fn test_basic_functionality_preserved() {
 
     // Test basic base64 parsing
     let result = parse_dcbor_item("b64'SGVsbG8='").unwrap();
-    assert_eq!(result, dcbor::CBOR::to_byte_string(b"Hello".to_vec()));
+    assert_eq!(result, dcbor::CBOR::to_byte_string(b"Hello"));
 
     // Test date parsing (date only)
     dcbor::register_tags();
@@ -222,11 +222,11 @@ fn test_complex_base64_requirements_runtime_only() {
 
     // Test longer base64 strings that meet the minimum requirement
     let result = parse_dcbor_item("b64'SGVsbG8gV29ybGQ='").unwrap();
-    assert_eq!(result, dcbor::CBOR::to_byte_string(b"Hello World".to_vec()));
+    assert_eq!(result, dcbor::CBOR::to_byte_string(b"Hello World"));
 
     // Test base64 without padding but meeting minimum length
     let result = parse_dcbor_item("b64'SGVsbG8='").unwrap();
-    assert_eq!(result, dcbor::CBOR::to_byte_string(b"Hello".to_vec()));
+    assert_eq!(result, dcbor::CBOR::to_byte_string(b"Hello"));
 }
 
 /// Test mixed complex patterns in realistic structures
@@ -263,7 +263,7 @@ fn test_complex_mixed_patterns_runtime_only() {
     // Verify base64 bytes
     assert_eq!(
         array[2],
-        dcbor::CBOR::to_byte_string(b"Hello World".to_vec())
+        dcbor::CBOR::to_byte_string(b"Hello World")
     );
 
     // Verify complex date with milliseconds and timezone
