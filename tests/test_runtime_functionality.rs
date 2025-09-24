@@ -64,7 +64,8 @@ fn test_basic_functionality_preserved() {
     assert!(map.contains_key("number"));
 }
 
-/// Test that simplified patterns don't break basic functionality during compilation
+/// Test that simplified patterns don't break basic functionality during
+/// compilation
 #[test]
 fn test_simplified_patterns_compilation() {
     // This test ensures that when rust-analyzer uses simplified patterns,
@@ -153,9 +154,11 @@ fn test_ide_compatibility() {
 /// It does NOT process escape sequences like JSON - that's the key insight!
 #[test]
 fn test_complex_string_escapes_runtime_only() {
-    // Test string with quotes - the lexer should capture the literal escaped string
+    // Test string with quotes - the lexer should capture the literal escaped
+    // string
     let result = parse_dcbor_item(r#""She said \"Hello\"""#).unwrap();
-    // The parser captures the literal string with escape sequences, not processed
+    // The parser captures the literal string with escape sequences, not
+    // processed
     assert_eq!(result, r#"She said \"Hello\""#.into());
 
     // Test string with backslash escapes
@@ -170,8 +173,9 @@ fn test_complex_string_escapes_runtime_only() {
     let result = parse_dcbor_item(r#""Unicode: \u0041\u0042\u0043""#).unwrap();
     assert_eq!(result, r#"Unicode: \u0041\u0042\u0043"#.into());
 
-    // Test that the complex regex pattern correctly validates the string structure
-    // These would be rejected by the simplified pattern but accepted by the full pattern
+    // Test that the complex regex pattern correctly validates the string
+    // structure These would be rejected by the simplified pattern but
+    // accepted by the full pattern
     let result = parse_dcbor_item(r#""Valid escape: \"""#).unwrap();
     assert_eq!(result, r#"Valid escape: \""#.into());
 
@@ -180,7 +184,8 @@ fn test_complex_string_escapes_runtime_only() {
 }
 
 /// Test complex date formats that ONLY work with full regex patterns
-/// These tests would FAIL if the simplified patterns were used during compilation
+/// These tests would FAIL if the simplified patterns were used during
+/// compilation
 #[test]
 fn test_complex_date_formats_runtime_only() {
     dcbor::register_tags();
@@ -190,12 +195,14 @@ fn test_complex_date_formats_runtime_only() {
     let expected = Date::from_string("2023-12-25T10:30:45Z").unwrap();
     assert_eq!(result, expected.to_cbor());
 
-    // Test date with positive timezone offset - would fail with simplified pattern
+    // Test date with positive timezone offset - would fail with simplified
+    // pattern
     let result = parse_dcbor_item("2023-12-25T10:30:45+05:30").unwrap();
     let expected = Date::from_string("2023-12-25T10:30:45+05:30").unwrap();
     assert_eq!(result, expected.to_cbor());
 
-    // Test date with negative timezone offset - would fail with simplified pattern
+    // Test date with negative timezone offset - would fail with simplified
+    // pattern
     let result = parse_dcbor_item("2023-12-25T10:30:45-08:00").unwrap();
     let expected = Date::from_string("2023-12-25T10:30:45-08:00").unwrap();
     assert_eq!(result, expected.to_cbor());
@@ -211,12 +218,14 @@ fn test_complex_date_formats_runtime_only() {
     assert_eq!(result, expected.to_cbor());
 }
 
-/// Test complex base64 minimum length requirement that ONLY works with full regex
-/// These tests would FAIL if the simplified patterns were used during compilation
+/// Test complex base64 minimum length requirement that ONLY works with full
+/// regex These tests would FAIL if the simplified patterns were used during
+/// compilation
 #[test]
 fn test_complex_base64_requirements_runtime_only() {
-    // Test base64 with minimum 2-character requirement - would fail with simplified pattern
-    // The full pattern has {2,} quantifier, simplified has *
+    // Test base64 with minimum 2-character requirement - would fail with
+    // simplified pattern The full pattern has {2,} quantifier, simplified
+    // has *
     let result = parse_dcbor_item("b64'QQ=='").unwrap();
     assert_eq!(result, dcbor::CBOR::to_byte_string(vec![0x41]));
 
@@ -261,10 +270,7 @@ fn test_complex_mixed_patterns_runtime_only() {
     );
 
     // Verify base64 bytes
-    assert_eq!(
-        array[2],
-        dcbor::CBOR::to_byte_string(b"Hello World")
-    );
+    assert_eq!(array[2], dcbor::CBOR::to_byte_string(b"Hello World"));
 
     // Verify complex date with milliseconds and timezone
     let expected_date = Date::from_string("2023-12-25T10:30:45.123Z").unwrap();
@@ -287,7 +293,8 @@ fn test_complex_mixed_patterns_runtime_only() {
     assert!(map.contains_key("message"));
     assert!(map.contains_key("timestamp"));
 
-    // The fact that this complex structure parsed at all proves full patterns work
+    // The fact that this complex structure parsed at all proves full patterns
+    // work
     assert!(map.len() >= 2);
 }
 
@@ -295,7 +302,8 @@ fn test_complex_mixed_patterns_runtime_only() {
 /// These tests prove that the full regex patterns are active during compilation
 #[test]
 fn test_base64_minimum_length_enforcement() {
-    // Test with single character - should fail with full patterns but succeed with simplified
+    // Test with single character - should fail with full patterns but succeed
+    // with simplified
     let input = r#"b64'A'"#;
     let result = parse_dcbor_item(input);
 
@@ -313,7 +321,8 @@ fn test_base64_minimum_length_enforcement() {
 
 #[test]
 fn test_date_with_fractional_seconds() {
-    // This test would fail with simplified patterns that don't support fractional seconds
+    // This test would fail with simplified patterns that don't support
+    // fractional seconds
     let input = r#"2023-12-25T12:30:45.123Z"#;
     dcbor::register_tags();
     let result = parse_dcbor_item(input);
@@ -324,7 +333,8 @@ fn test_date_with_fractional_seconds() {
 
 #[test]
 fn test_date_with_timezone_offset() {
-    // This test would fail with simplified patterns that don't support timezone info
+    // This test would fail with simplified patterns that don't support timezone
+    // info
     let input = r#"2023-12-25T12:30:45+05:30"#;
     dcbor::register_tags();
     let result = parse_dcbor_item(input);
@@ -335,8 +345,9 @@ fn test_date_with_timezone_offset() {
 
 #[test]
 fn test_string_with_control_characters_rejected() {
-    // This test ensures that strings with control characters are properly rejected
-    // by the full pattern but would be accepted by the simplified pattern
+    // This test ensures that strings with control characters are properly
+    // rejected by the full pattern but would be accepted by the simplified
+    // pattern
     let input = "\"hello\x01world\""; // Contains control character \x01
     let result = parse_dcbor_item(input);
 
@@ -359,7 +370,8 @@ fn test_string_with_unescaped_quotes_rejected() {
 
 #[test]
 fn test_complex_string_escapes() {
-    // This test would fail with simplified patterns that don't support escape sequences
+    // This test would fail with simplified patterns that don't support escape
+    // sequences
     let input = r#""hello\nworld\t\u0041""#;
     let result = parse_dcbor_item(input);
 
@@ -375,8 +387,9 @@ fn test_complex_string_escapes() {
 
 #[test]
 fn test_runtime_pattern_validation() {
-    // This test validates that the full patterns are actually being used at runtime
-    // by testing inputs that would produce different results with simplified patterns
+    // This test validates that the full patterns are actually being used at
+    // runtime by testing inputs that would produce different results with
+    // simplified patterns
 
     // Test 1: Complex date with microseconds and timezone
     dcbor::register_tags();

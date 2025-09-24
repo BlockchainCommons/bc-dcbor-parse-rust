@@ -1,4 +1,4 @@
-use dcbor_parse::{parse_dcbor_item, ParseError};
+use dcbor_parse::{ParseError, parse_dcbor_item};
 
 fn main() {
     println!("=== dCBOR Parse - Duplicate Key Detection ===\n");
@@ -12,13 +12,17 @@ fn main() {
     }
 
     // Invalid map with duplicate string keys - should fail
-    let invalid_map1 = r#"{"key1": "value1", "key2": "value2", "key1": "value3"}"#;
+    let invalid_map1 =
+        r#"{"key1": "value1", "key2": "value2", "key1": "value3"}"#;
     println!("Invalid map (duplicate string keys): {}", invalid_map1);
     match parse_dcbor_item(invalid_map1) {
         Ok(cbor) => println!("✗ Unexpectedly parsed: {}\n", cbor.diagnostic()),
         Err(ParseError::DuplicateMapKey(span)) => {
-            println!("✓ Correctly detected duplicate key at position {}..{}\n", span.start, span.end);
-        },
+            println!(
+                "✓ Correctly detected duplicate key at position {}..{}\n",
+                span.start, span.end
+            );
+        }
         Err(e) => println!("✗ Unexpected error: {:?}\n", e),
     }
 
@@ -28,19 +32,28 @@ fn main() {
     match parse_dcbor_item(invalid_map2) {
         Ok(cbor) => println!("✗ Unexpectedly parsed: {}\n", cbor.diagnostic()),
         Err(ParseError::DuplicateMapKey(span)) => {
-            println!("✓ Correctly detected duplicate key at position {}..{}\n", span.start, span.end);
-        },
+            println!(
+                "✓ Correctly detected duplicate key at position {}..{}\n",
+                span.start, span.end
+            );
+        }
         Err(e) => println!("✗ Unexpected error: {:?}\n", e),
     }
 
     // Invalid map with numeric equivalence (1 and 1.0) - should fail
     let invalid_map3 = "{1: \"value1\", 2: \"value2\", 1.0: \"value3\"}";
-    println!("Invalid map (numeric equivalent keys 1 and 1.0): {}", invalid_map3);
+    println!(
+        "Invalid map (numeric equivalent keys 1 and 1.0): {}",
+        invalid_map3
+    );
     match parse_dcbor_item(invalid_map3) {
         Ok(cbor) => println!("✗ Unexpectedly parsed: {}\n", cbor.diagnostic()),
         Err(ParseError::DuplicateMapKey(span)) => {
-            println!("✓ Correctly detected duplicate key at position {}..{}\n", span.start, span.end);
-        },
+            println!(
+                "✓ Correctly detected duplicate key at position {}..{}\n",
+                span.start, span.end
+            );
+        }
         Err(e) => println!("✗ Unexpected error: {:?}\n", e),
     }
 

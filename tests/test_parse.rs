@@ -442,8 +442,7 @@ fn test_date_literals_with_milliseconds() {
     );
 
     // Test that it's a valid date object
-    let expected =
-        Date::from_string("2023-02-08T15:30:45.123Z").unwrap();
+    let expected = Date::from_string("2023-02-08T15:30:45.123Z").unwrap();
     assert_eq!(datetime_with_ms, expected.to_cbor());
 }
 
@@ -489,8 +488,8 @@ fn test_duplicate_map_keys() {
         parse_dcbor_item("{1: \"value1\", 2: \"value2\", 1.0: \"value3\"}");
     assert!(result.is_err());
     match result.unwrap_err() {
-        ParseError::DuplicateMapKey(_) => {} /* Expected - 1 and 1.0 are
-                                               * semantically the same key */
+        ParseError::DuplicateMapKey(_) => {} /* Expected - 1 and 1.0 are */
+        // semantically the same key
         e => panic!("Expected DuplicateMapKey error, got: {:?}", e),
     }
 

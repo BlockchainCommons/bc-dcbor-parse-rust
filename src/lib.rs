@@ -67,5 +67,6 @@ pub use error::{Error as ParseError, Result as ParseResult};
 
 mod compose;
 pub use compose::{
-    Error as ComposeError, Result as ComposeResult, compose_dcbor_array, compose_dcbor_map,
+    Error as ComposeError, Result as ComposeResult, compose_dcbor_array,
+    compose_dcbor_map,
 };
