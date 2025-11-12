@@ -53,7 +53,7 @@ pub fn compose_dcbor_array(array: &[&str]) -> Result<CBOR> {
 /// assert_eq!(cbor.diagnostic(), "{1: 2, 3: 4}");
 /// ```
 pub fn compose_dcbor_map(array: &[&str]) -> Result<CBOR> {
-    if array.len() % 2 != 0 {
+    if !array.len().is_multiple_of(2) {
         return Err(Error::OddMapLength);
     }
 

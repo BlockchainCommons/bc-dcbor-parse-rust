@@ -53,7 +53,7 @@ pub enum Token {
     #[regex(r"h'[0-9a-fA-F]*'", |lex| {
         let hex = lex.slice();
         let raw_hex = &hex.as_bytes()[2..hex.len() - 1];
-        if raw_hex.len() % 2 != 0 {
+        if !raw_hex.len().is_multiple_of(2) {
             return Err(Error::InvalidHexString(lex.span()));
         }
         hex::decode(raw_hex)
