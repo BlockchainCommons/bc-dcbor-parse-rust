@@ -148,7 +148,7 @@ fn parse_item_token(
         Token::Null => Ok(CBOR::null()),
         Token::ByteStringHex(Ok(bytes)) => Ok(CBOR::to_byte_string(bytes)),
         Token::ByteStringBase64(Ok(bytes)) => Ok(CBOR::to_byte_string(bytes)),
-        Token::DateLiteral(Ok(date)) => Ok(date.clone().into()),
+        Token::DateLiteral(Ok(date)) => Ok((*date).into()),
         Token::Number(num) => Ok((*num).into()),
         Token::NaN => Ok(f64::NAN.into()),
         Token::Infinity => Ok(f64::INFINITY.into()),
@@ -267,7 +267,7 @@ fn parse_array(lexer: &mut Lexer<'_, Token>) -> Result<CBOR> {
                 awaits_item = false;
             }
             Token::DateLiteral(Ok(date)) if !awaits_comma => {
-                items.push(date.clone().into());
+                items.push(date.into());
                 awaits_item = false;
             }
             Token::Number(num) if !awaits_comma => {
