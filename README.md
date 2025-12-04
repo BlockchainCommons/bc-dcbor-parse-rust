@@ -48,10 +48,15 @@ To parse named tags and URs, the correspondence between the tag name (UR type) a
 
 ```toml
 [dependencies]
-dcbor-parse = "0.7.0"
+dcbor-parse = "0.8.0"
 ```
 
 ## Version History
+
+### 0.8.0 - December 3, 2025
+
+- Align to dependencies.
+- Format.
 
 ### 0.7.0 - November 12, 2025
 
