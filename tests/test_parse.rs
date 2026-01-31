@@ -265,24 +265,26 @@ fn test_errors() {
 
 #[test]
 fn test_whitespace() {
+    // expected-text-output-rubric:
+    #[rustfmt::skip]
     let src = indoc! {r#"
         {
             "Hello":
                 "World"
         }
-    "#}
-    .trim();
+    "#}.trim();
     let result = parse_dcbor_item(src).unwrap();
     println!("{}", result.diagnostic());
 }
 
 #[test]
 fn test_whitespace_2() {
+    // expected-text-output-rubric:
+    #[rustfmt::skip]
     let src = indoc! {r#"
         {"Hello":
         "World"}
-    "#}
-    .trim();
+    "#}.trim();
     let result = parse_dcbor_item(src).unwrap();
     println!("{}", result.diagnostic());
 }
