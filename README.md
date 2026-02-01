@@ -48,10 +48,14 @@ To parse named tags and URs, the correspondence between the tag name (UR type) a
 
 ```toml
 [dependencies]
-dcbor-parse = "0.11.0"
+dcbor-parse = "0.11.1"
 ```
 
 ## Version History
+
+### 0.11.1 - January 31, 2026
+
+- Add rustfmt::skip attributes and expected-text-output-rubric comments to test whitespace functions.
 
 ### 0.11.0 - January 11, 2026
 
